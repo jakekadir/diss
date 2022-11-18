@@ -1,5 +1,6 @@
 import config
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
+from fastapi.security import OAuth2PasswordBearer
 from dotenv import dotenv_values
 from pymongo import MongoClient
 from routes import router as user_router
@@ -7,6 +8,9 @@ from routes import router as user_router
 config = dotenv_values(".env")
 
 app = FastAPI()
+
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
 
 @app.on_event("startup")
 def startup_db_client():
@@ -25,6 +29,9 @@ app.include_router(user_router, tags=["users"], prefix="/user")
 async def get_root():
     return {"message" : "hello"}
 
+@app.get("/hidden/")
+async def get_hidden(token: str = Depends(oauth2_scheme)):
+    return {"token" : token}
 
 
 
