@@ -53,11 +53,16 @@ async def register(password: str = Form(), email = Form()):
     user: UserRegister = UserRegister(_email=email, 
                                         hashed_password=hash, 
                                         friends=[],
+                                        savedRecipes=[],
+                                        starredRecipes=[],
+                                        uploadedRecipes=[],
                                         date=datetime.utcnow(),
                                         disabled=False)
 
     # add user to database
     user_db.add(user)
+
+
 
 # protected route
 @router.get("/users/me/", response_model=UserInDB)
