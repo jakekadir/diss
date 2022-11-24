@@ -17,7 +17,10 @@ class PydanticObjectId(ObjectId):
     
 class User(BaseModel):
     email: EmailStr = Field()
-    friends: List[UUID4]
+    friends: List[PydanticObjectId]
+    savedRecipes: List[PydanticObjectId]
+    starredRecipes: List[PydanticObjectId]
+    uploadedRecipes: List[PydanticObjectId]
     disabled: bool
 
 class UserRegister(User):
