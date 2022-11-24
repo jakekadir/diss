@@ -2,8 +2,8 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 from passlib.context import CryptContext
 from typing import Union
-from models import User, DBUser, TokenData
-import database.user
+from models import User, UserInDB, TokenData
+from database import user_db
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from config import SECRET_KEY, ALGORITHM
@@ -38,7 +38,7 @@ def get_password_hash(password: str) -> str:
     """
     return pwd_context.hash(password)
 
-def authenticate_user(username: str, password: str) -> Union[bool, DBUser]:
+def authenticate_user(email: str, password: str) -> Union[bool, UserInDB]:
     """
     Verifies if a username and password combination occur in a given database.
 
@@ -49,7 +49,8 @@ def authenticate_user(username: str, password: str) -> Union[bool, DBUser]:
     Outputs:
         - `Union[bool, DBUser]` - returns `False` if the username is not in the database or if the username does occur but the password is incorrect. Returns the `user` object otherwise.
     """
-    user = database.user.get(username)
+    user = user_db.get(email=email)
+
     if not user:
         return False
     if not verify_password(password, user.hashed_password):
@@ -80,7 +81,7 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes
     return encoded_jwt
 
 # oauth2 scheme will extract token from header
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> DBUser:
+async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserInDB:
     """
     Gets the current user given a JWT token. Dependency on `oauth2_scheme` will retrieve the JWT token from the Authorization header of an HTTP request.
 
@@ -88,7 +89,7 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> DBUser:
         - `token: str`, the access token for the user
 
     Outputs:
-        - `DBUser`, the object for the current user as determined by the access token
+        - `UserInDB`, the object for the current user as determined by the access token
     """
     # create exception
     credentials_exception = HTTPException(
@@ -102,19 +103,23 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> DBUser:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
         # create token object using username and token
-        username: str = payload.get("sub")
-        if username is None:
+        email: str = payload.get("sub")
+
+        # if no email, the token is invalid
+        if email is None:
             raise credentials_exception
-        token_data = TokenData(username=username)
+
+        # extract token data
+        token_data = TokenData(username=email)
     except JWTError:
         raise credentials_exception
 
-    user = get_user(fake_users_db, username=token_data.username)
+    user = user_db.get(username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+async def get_current_active_user(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
     """
     Checks the disabled attribute of a user, returning the same `User` object if the not disabled; an `HTTPException` is thrown otherwise.
 
