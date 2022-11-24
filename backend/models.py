@@ -1,17 +1,34 @@
 import uuid
 from typing import List, Union
 from pydantic import BaseModel, Field, EmailStr, HttpUrl, UUID4
+from bson.objectid import ObjectId
 
+# creates a new Pydantic type wrapper for ObjectId, allowing for use in Pydantic models
+class PydanticObjectId(ObjectId):
+    @classmethod
+    def __get_validators__(cls):
+        yield cls.validate
+
+    @classmethod
+    def validate(cls, v):
+        if not isinstance(v, ObjectId):
+            raise TypeError('ObjectId required')
+        return str(v)
+    
 class User(BaseModel):
-    id: UUID4 = Field(default_factory=uuid.uuid4, alias="_id")
-    email: EmailStr = Field(alias="_email")
+    email: EmailStr = Field()
     friends: List[UUID4]
+    disabled: bool
 
-class DBUser(User):
+class UserRegister(User):
     hashed_password: str
+    date: str
+
+class UserInDB(UserRegister):
+    id: PydanticObjectId = Field(alias="_id")
 
 class Recipe(BaseModel):
-    id: UUID4 = Field(default_factory=uuid.uuid4, alias="_id")
+    id: PydanticObjectId = Field(alias="_id")
     title: str
     steps: List[str]
     author_id: str
@@ -38,4 +55,4 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    username: Union[str, None] = None
+    email: Union[EmailStr, None] = None
