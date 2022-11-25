@@ -1,4 +1,4 @@
-from models import User, UserInDB, UserRegister, Token
+from models import User, UserInDB, UserRegister, Token, UserDBQuery, Relationship, RelationshipType
 from database import user_db
 from config import ACCESS_TOKEN_EXPIRE_MINUTES
 from datetime import timedelta, datetime
@@ -62,7 +62,85 @@ async def register(password: str = Form(), email = Form()):
     # add user to database
     user_db.add(user)
 
+"""
+options:
+    - each user stores several arrays:
+        - friends
+        - sent request
+        - received request
+        - denied request
+        - blocked (only appears in the record of the user who has blocked the other)
+    - each user stores an object with:
+        - friend ID
+        - relationship type
+            - friendship
+            - received request
+            - sent request
+            - denied request
+            - blocked
+    - separate table with fields:
+        - initiating user
+        - subject user
+        - relationship type
+            - friendship
+            - sent request
+            - denied request
+            - blocked request
+"""
 
+
+"""
+friendship routes
+"""
+@router.post("/users/send-friend-request")
+async def send_friend_request(current_user: UserInDB = Depends(get_current_active_user), 
+                                friend_username: str = Form()):
+        
+    # query database for username
+    user_query: UserDBQuery = UserDBQuery(username=friend_username)
+    
+    friendDB: UserInDB = user_db.get(user_query)
+
+
+    # check user exists
+    if friendDB is None:
+        raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="Cannot find user to send friend request to."
+                )
+
+    # if current user has no friend objects for the requested friend:
+    if friend_username not in [relationship.id for relationship in current_user.relationships]:
+
+        # create friend object for current user
+        relationship: Relationship = Relationship(id=friendDB.id, status=RelationshipType.SENT)
+             
+        # update record
+
+    # if user already has a relationship with the requested friend:
+
+        """
+        match relationship type:
+
+            case RECEIVED:
+
+                update as friends
+
+                update friend's friend object
+
+            case BLOCKED:
+
+                change blocked attribute to sent
+
+            case 
+        
+        """
+
+    # if not blocked
+    
+        # create friend object for friend
+
+        # update record
 
 # protected route
 @router.get("/users/me/", response_model=UserInDB)
@@ -72,5 +150,5 @@ async def read_users_me(current_user: UserInDB = Depends(get_current_active_user
 
 @router.get("/users/me/friends/")
 async def read_own_friends(current_user: UserInDB = Depends(get_current_active_user)):
-    return [{"friends": current_user.friends, "owner": current_user.username}]
+    return [{"friends": current_user.relationships, "owner": current_user.username}]
 
