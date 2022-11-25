@@ -1,5 +1,5 @@
 from database.db import db
-from models import UserInDB
+from models import UserInDB, UserDBQuery
 from pydantic import EmailStr
 
 def add(user: UserInDB):
@@ -21,10 +21,13 @@ def update():
 
     pass
 
-def get(email: EmailStr) -> UserInDB:
+def get(user_query: UserDBQuery) -> UserInDB:
 
-    user = UserInDB(**db["users"].find_one({
-        "email" : email
-    }))
+    query_result = db["users"].find_one(
+        user_query.dict()
+    )
 
-    return user
+    if query_result is not None:
+        user = UserInDB(**query_result)
+
+        return user

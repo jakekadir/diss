@@ -1,7 +1,8 @@
 import uuid
-from typing import List, Union
-from pydantic import BaseModel, Field, EmailStr, HttpUrl, UUID4
+from typing import List, Union, Optional
+from pydantic import BaseModel, Field, EmailStr, HttpUrl
 from bson.objectid import ObjectId
+from enum import Enum
 
 # creates a new Pydantic type wrapper for ObjectId, allowing for use in Pydantic models
 class PydanticObjectId(ObjectId):
@@ -14,10 +15,22 @@ class PydanticObjectId(ObjectId):
         if not isinstance(v, ObjectId):
             raise TypeError('ObjectId required')
         return str(v)
+
+class RelationshipType(Enum):
+    SENT = 0
+    RECEIVED = 1
+    FRIENDS = 2
+    BLOCKED = 3
+    REJECTED = 4
+
+class Relationship(BaseModel):
+    userId: PydanticObjectId
+    status: RelationshipType
     
 class User(BaseModel):
     email: EmailStr = Field()
-    friends: List[PydanticObjectId]
+    username: str
+    relationships: List[Relationship]
     savedRecipes: List[PydanticObjectId]
     starredRecipes: List[PydanticObjectId]
     uploadedRecipes: List[PydanticObjectId]
@@ -29,6 +42,12 @@ class UserRegister(User):
 
 class UserInDB(UserRegister):
     id: PydanticObjectId = Field(alias="_id")
+
+class UserDBQuery(BaseModel):
+    email: Optional[EmailStr]
+    id: Optional[PydanticObjectId]
+    username: Optional[str]
+
 
 class Recipe(BaseModel):
     id: PydanticObjectId = Field(alias="_id")
