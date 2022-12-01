@@ -1,9 +1,10 @@
 from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
+import crud
 from passlib.context import CryptContext
 from typing import Union
-from models import User, UserInDB, TokenData
-from database import user_db
+from schemas import UserInDB, TokenData
+from database import SessionLocal
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
 from config import SECRET_KEY, ALGORITHM
@@ -12,6 +13,13 @@ from config import SECRET_KEY, ALGORITHM
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
@@ -38,7 +46,7 @@ def get_password_hash(password: str) -> str:
     """
     return pwd_context.hash(password)
 
-def authenticate_user(email: str, password: str) -> Union[bool, UserInDB]:
+def authenticate_user(db, username: str, password: str) -> Union[bool, UserInDB]:
     """
     Verifies if a username and password combination occur in a given database.
 
@@ -49,13 +57,15 @@ def authenticate_user(email: str, password: str) -> Union[bool, UserInDB]:
     Outputs:
         - `Union[bool, DBUser]` - returns `False` if the username is not in the database or if the username does occur but the password is incorrect. Returns the `user` object otherwise.
     """
-    user = user_db.get(email=email)
+
+    user = crud.get_users_and(db, username=username, first=True)
 
     if not user:
         return False
-    if not verify_password(password, user.hashed_password):
+    if not verify_password(password, user.hashed_pass):
         return False
     return user
+    
 
 def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes=15)) -> str:
     """
@@ -114,11 +124,13 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserInDB:
     except JWTError:
         raise credentials_exception
 
+    """
     user = user_db.get(username=token_data.username)
     if user is None:
         raise credentials_exception
     return user
-
+    """
+    
 async def get_current_active_user(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
     """
     Checks the disabled attribute of a user, returning the same `User` object if the not disabled; an `HTTPException` is thrown otherwise.

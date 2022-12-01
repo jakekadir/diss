@@ -1,6 +1,5 @@
-AWSAccessKeyId="AKIASRBDECLLROD5LYVX"
-AWSSecretKey="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"
 MONGO_URI="mongodb://jjsmithson:wh5g1tr45RHhIrZH69dGMUSN5GMCIJuy9sMCUDYMrq5ZkC9Xpy2sS2864jpbhSYxyg2dX0RaCj90ACDbdq7CVg==@jjsmithson.mongo.cosmos.azure.com:10255/?ssl=true&retrywrites=false&replicaSet=globaldb&maxIdleTimeMS=120000&appName=@jjsmithson@"
+DATABASE_CON="mysql+pymysql://jjsmithson:Hellfire22!@food-dissertation.mysql.database.azure.com/food"
 DB_NAME="food"
 # to get a string like this run:
 # openssl rand -hex 32
