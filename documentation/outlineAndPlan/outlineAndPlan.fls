@@ -105,7 +105,6 @@ INPUT /home/jake/diss/documentation/outlineAndPlan/mainText.tex
 INPUT /home/jake/diss/documentation/outlineAndPlan/mainText.tex
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecrm1440.tfm
 INPUT /usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecrm1200.tfm
-INPUT /usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecti1095.tfm
 INPUT /home/jake/diss/documentation/outlineAndPlan/../PlanGantt.png
 INPUT ../PlanGantt.png
 INPUT ../PlanGantt.png
@@ -114,7 +113,6 @@ INPUT /home/jake/diss/documentation/outlineAndPlan/outlineAndPlan.bbl
 INPUT /home/jake/diss/documentation/outlineAndPlan/outlineAndPlan.aux
 INPUT /home/jake/diss/documentation/outlineAndPlan/mainText.aux
 INPUT /home/jake/diss/documentation/outlineAndPlan/mainText.aux
-INPUT /home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/ecti1095.600pk
 INPUT /home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk
 INPUT /home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1095.600pk
 INPUT /home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1095.600pk
