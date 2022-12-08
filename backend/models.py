@@ -1,80 +1,64 @@
-import uuid
-from typing import List, Union, Optional
-from pydantic import BaseModel, Field, EmailStr, HttpUrl
-from bson.objectid import ObjectId
-from enum import Enum
+from __future__ import annotations
+from sqlalchemy import Integer, Column, String, Boolean, Enum, UniqueConstraint, ForeignKey
+from sqlalchemy.orm import relationship
+import enum
+from database import Base
 
-# creates a new Pydantic type wrapper for ObjectId, allowing for use in Pydantic models
-class PydanticObjectId(ObjectId):
-    @classmethod
-    def __get_validators__(cls):
-        yield cls.validate
+class RelationshipType(enum.Enum):
+    PENDING = 0
+    ACCEPTED = 1
+    BLOCKED = 2
 
-    @classmethod
-    def validate(cls, v):
-        if not isinstance(v, ObjectId):
-            raise TypeError('ObjectId required')
-        return str(v)
+class UserRelationship(Base):
+    __tablename__ = "UserRelationships"
 
-class RelationshipType(Enum):
-    SENT = 0
-    RECEIVED = 1
-    FRIENDS = 2
-    BLOCKED = 3
-    REJECTED = 4
+    user_id = Column(Integer, ForeignKey("users.id"),primary_key=True)
+    friend_id = Column(Integer,primary_key=True)
+    relationship_status = Column(Enum(RelationshipType))
 
-class Relationship(BaseModel):
-    userId: PydanticObjectId
-    status: RelationshipType
-    
-class User(BaseModel):
-    email: EmailStr = Field()
-    username: str
-    relationships: List[Relationship]
-    savedRecipes: List[PydanticObjectId]
-    starredRecipes: List[PydanticObjectId]
-    uploadedRecipes: List[PydanticObjectId]
-    disabled: bool
+    # ensures each user->friend record can only occur once
+    UniqueConstraint("user_id", "friend_id", name="unique_friendship")
 
-class UserRegister(User):
-    hashed_password: str
-    date: str
+class User(Base):
+    __tablename__ = "users"
 
-class UserInDB(UserRegister):
-    id: PydanticObjectId = Field(alias="_id")
+    id = Column(Integer, primary_key=True)
+    username = Column(String(20))
+    email = Column(String(30), unique=True, index=True)
+    hashed_pass = Column(String(30))
+    disabled = Column(Boolean)
 
-class UserDBQuery(BaseModel):
-    email: Optional[EmailStr]
-    id: Optional[PydanticObjectId]
-    username: Optional[str]
+    """
+    form connection to userrelationship table, with cascade mode ensuring that when the elements of the relationships array are deleted
+    the corresponding db record is deleted too. 
+    the lazy parameter loads the children as queries rather than objects, allowing filters to be performed on the relationships array
+    """ 
+    relationships = relationship("UserRelationship",cascade="all, delete, delete-orphan", lazy="dynamic")
+    recipes = relationship("Recipe", cascade="all, delete, delete-orphan", lazy="dynamic")
 
+class Recipe(Base):
+    __tablename__ = "recipes"
 
-class Recipe(BaseModel):
-    id: PydanticObjectId = Field(alias="_id")
-    title: str
-    steps: List[str]
-    author_id: str
-    author_name: str
-    cook_time: str
-    prep_time: str
-    total_time: str
-    date_published: str
-    description: str
-    image_urls: List[HttpUrl]
-    saturated_fat_content: float
-    cholesterol_content: float
-    sodium_content: float
-    carbohydrate_content: float
-    fiber_content: float
-    sugar_content: float
-    protein_content: float
-    recipe_servings: float
-    recipe_yield: str 
+    id = Column(Integer, primary_key=True)
+    description = Column(String(300))
+    servings = Column()
+    author = Column(Integer, ForeignKey("users.id"))
+    steps = relationship("RecipeStep", cascade="all, delete, delete-orphan", lazy="dynamic")
+    ingredients = relationship("RecipeIngredient", cascade="all, delete, delete-orphan", lazy="dynamic")
 
-# token model
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+# ingredients and steps have common attributes
+class RecipeSubItem(Base):
+    id = Column(Integer, primary_key=True)
+    recipe = Column(Integer, ForeignKey("recipes.id"))
+    text = Column(String(300))
+    index = Column(Integer)
+    # ensures each recipe / index pair is unique
+    UniqueConstraint("recipe", "index", name="unique_recipe_item")
 
-class TokenData(BaseModel):
-    email: Union[EmailStr, None] = None
+class RecipeStep(RecipeSubItem):
+    __tablename__ = "recipestep"
+
+class RecipeIngredient(RecipeSubItem):
+    __tablename__ = "recipeingredient"
+
+    quantity = Column(String(50))
