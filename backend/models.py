@@ -15,6 +15,8 @@ class UserRelationship(Base):
     user_id = Column(Integer, ForeignKey("users.id"),primary_key=True)
     friend_id = Column(Integer,primary_key=True)
     relationship_status = Column(Enum(RelationshipType))
+
+    # ensures each user->friend record can only occur once
     UniqueConstraint("user_id", "friend_id", name="unique_friendship")
 
 class User(Base):
@@ -26,86 +28,37 @@ class User(Base):
     hashed_pass = Column(String(30))
     disabled = Column(Boolean)
 
-    relationships = relationship("UserRelationship")
+    """
+    form connection to userrelationship table, with cascade mode ensuring that when the elements of the relationships array are deleted
+    the corresponding db record is deleted too. 
+    the lazy parameter loads the children as queries rather than objects, allowing filters to be performed on the relationships array
+    """ 
+    relationships = relationship("UserRelationship",cascade="all, delete, delete-orphan", lazy="dynamic")
+    recipes = relationship("Recipe", cascade="all, delete, delete-orphan", lazy="dynamic")
 
-    def add_friend(self, friend: User):
+class Recipe(Base):
+    __tablename__ = "recipes"
 
-        # if friend has blocked self:
+    id = Column(Integer, primary_key=True)
+    description = Column(String(300))
+    servings = Column()
+    author = Column(Integer, ForeignKey("users.id"))
+    steps = relationship("RecipeStep", cascade="all, delete, delete-orphan", lazy="dynamic")
+    ingredients = relationship("RecipeIngredient", cascade="all, delete, delete-orphan", lazy="dynamic")
 
-            # return None
+# ingredients and steps have common attributes
+class RecipeSubItem(Base):
+    id = Column(Integer, primary_key=True)
+    recipe = Column(Integer, ForeignKey("recipes.id"))
+    text = Column(String(300))
+    index = Column(Integer)
+    # ensures each recipe / index pair is unique
+    UniqueConstraint("recipe", "index", name="unique_recipe_item")
 
-        # if friend is friends with self
+class RecipeStep(RecipeSubItem):
+    __tablename__ = "recipestep"
 
-            # update friend's relationship to have status friends
+class RecipeIngredient(RecipeSubItem):
+    __tablename__ = "recipeingredient"
 
-            # 
-        
-        # else
-        new_relationship = UserRelationship(
-            user_id=self.id,
-            friend_id=friend.id,
-            relationship_status=RelationshipType.PENDING
-        )
-        self.friends.append(friend)
-
-        print(self.friends)
-
-            # create new friend
-
-
-    def accept_friend(self, friend: User):
-
-        pass
-
-    def remove_friend(self, friend: User):
-
-        pass
-
-    def block_user(self, user: User):
-
-        pass
-
-"""
-when a user sends a friendship request:
-
-    exsting_relationship = query DB for a record with the ID pair in either column
-
-    if existing_relationship exists:
-
-        if existing_relaitionship is friends or blocked:
-
-            do nothing            
-    
-    create a record with user's ID as sender ID etc.
-
-when a user accepts a friendship request:
-
-    find existing_relationship
-
-    update enum
-
-    save
-
-when a recipient deletes a friend request:
-    
-    query by recipient_id and delete the record
-
-to get sent friendship requests:
-
-    use user ID to query sender_id column where enum is pending
-
-to get received friendship requests:
-
-    use user ID to query sender_id column where enum is pending
-
-to get friends:
-    query sender_id by user ID and recipient ID by user ID, where enum is accepted
-
-to block a user:
-
-    query for any records with user ID in sender ID or recipient ID column
-
-    delete these records
-
-    create new record with blocking user as sender ID and blocked user and recipient, with enum as blocked
-"""
+    quantity = Column(String(50))

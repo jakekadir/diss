@@ -4,8 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from config import DATABASE_CON
 
-engine = create_engine(DATABASE_CON,
-                        echo = True)
+engine = create_engine(DATABASE_CON)
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

@@ -7,6 +7,7 @@ from schemas import UserInDB, TokenData
 from database import SessionLocal
 from datetime import datetime, timedelta
 from jose import JWTError, jwt
+from sqlalchemy.orm import Session
 from config import SECRET_KEY, ALGORITHM
 
 # hashing context
@@ -58,8 +59,7 @@ def authenticate_user(db, username: str, password: str) -> Union[bool, UserInDB]
         - `Union[bool, DBUser]` - returns `False` if the username is not in the database or if the username does occur but the password is incorrect. Returns the `user` object otherwise.
     """
 
-    user = crud.get_users_and(db, username=username, first=True)
-
+    user = crud.get_users(db, username=username, first=True)
     if not user:
         return False
     if not verify_password(password, user.hashed_pass):
@@ -91,7 +91,7 @@ def create_access_token(data: dict, expires_delta: timedelta = timedelta(minutes
     return encoded_jwt
 
 # oauth2 scheme will extract token from header
-async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserInDB:
+async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> UserInDB:
     """
     Gets the current user given a JWT token. Dependency on `oauth2_scheme` will retrieve the JWT token from the Authorization header of an HTTP request.
 
@@ -113,23 +113,24 @@ async def get_current_user(token: str = Depends(oauth2_scheme)) -> UserInDB:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
 
         # create token object using username and token
-        email: str = payload.get("sub")
+        username: str = payload.get("sub")
 
-        # if no email, the token is invalid
-        if email is None:
+        # if no username, the token is invalid
+        if username is None:
             raise credentials_exception
 
         # extract token data
-        token_data = TokenData(username=email)
+        token_data = TokenData(username=username)
+
     except JWTError:
         raise credentials_exception
-
-    """
-    user = user_db.get(username=token_data.username)
+    
+    # find corresponding user by username
+    user = crud.get_users(db, username=token_data.username, first=True)
     if user is None:
         raise credentials_exception
+    # return user
     return user
-    """
     
 async def get_current_active_user(current_user: UserInDB = Depends(get_current_user)) -> UserInDB:
     """

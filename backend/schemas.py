@@ -3,10 +3,10 @@ from pydantic import BaseModel, Field, EmailStr, HttpUrl
 from enum import Enum
 from models import RelationshipType
 
-class Relationship(BaseModel):
-    sender_id: int
-    recipient_id: int
-    status: RelationshipType
+class UserRelationship(BaseModel):
+    user_id: int
+    friend_id: int
+    relationship_status: RelationshipType
     
 class User(BaseModel):
     email: EmailStr = Field()
@@ -63,4 +63,4 @@ class Token(BaseModel):
     token_type: str
 
 class TokenData(BaseModel):
-    email: Union[EmailStr, None] = None
+    username: Union[str, None] = None
