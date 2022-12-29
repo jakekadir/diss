@@ -108,8 +108,6 @@ INPUT /usr/share/texlive/texmf-dist/fonts/tfm/jknappen/ec/ecrm1200.tfm
 INPUT /home/jake/diss/documentation/outlineAndPlan/../PlanGantt.png
 INPUT ../PlanGantt.png
 INPUT ../PlanGantt.png
-INPUT /home/jake/diss/documentation/outlineAndPlan/outlineAndPlan.bbl
-INPUT /home/jake/diss/documentation/outlineAndPlan/outlineAndPlan.bbl
 INPUT /home/jake/diss/documentation/outlineAndPlan/outlineAndPlan.aux
 INPUT /home/jake/diss/documentation/outlineAndPlan/mainText.aux
 INPUT /home/jake/diss/documentation/outlineAndPlan/mainText.aux
