@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2022.11.12)  1 DEC 2022 14:27
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019/Debian) (preloaded format=pdflatex 2022.11.12)  29 DEC 2022 12:33
 entering extended mode
  restricted \write18 enabled.
  file:line:error style messages enabled.
@@ -275,11 +275,11 @@ Package pdftex.def Info: logo_black.png  used on input line 10.
 
 
 ]
-<../PlanGantt.png, id=19, 1851.91875pt x 533.995pt>
+<../PlanGantt.png, id=19, 1851.91875pt x 642.4pt>
 File: ../PlanGantt.png Graphic file (type png)
 <use ../PlanGantt.png>
-Package pdftex.def Info: ../PlanGantt.png  used on input line 91.
-(pdftex.def)             Requested size: 284.52756pt x 82.03503pt.
+Package pdftex.def Info: ../PlanGantt.png  used on input line 93.
+(pdftex.def)             Requested size: 458.08954pt x 158.90382pt.
  [2 <../PlanGantt.png>]) [3] (/home/jake/diss/documentation/outlineAndPlan/outlineAndPlan.bbl
 
 LaTeX Warning: Empty `thebibliography' environment on input line 3.
@@ -296,7 +296,7 @@ Here is how much of TeX's memory you used:
  14 hyphenation exceptions out of 8191
  48i,9n,66p,479b,384s stack positions out of 5000i,500n,10000p,200000b,80000s
  </home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/tcrm1095.600pk> </home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/ecrm1095.600pk> </home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1095.600pk> </home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1200.600pk> </home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx2074.600pk>{/usr/share/texlive/texmf-dist/fonts/enc/dvips/base/8r.enc} </home/jake/.texlive2019/texmf-var/fonts/pk/ljfour/jknappen/ec/ecbx1440.600pk></usr/share/texlive/texmf-dist/fonts/type1/urw/times/utmr8a.pfb>
-Output written on /home/jake/diss/documentation/outlineAndPlan/outlineAndPlan.pdf (5 pages, 150180 bytes).
+Output written on /home/jake/diss/documentation/outlineAndPlan/outlineAndPlan.pdf (5 pages, 164215 bytes).
 PDF statistics:
  242 PDF objects out of 1000 (max. 8388607)
  41 compressed objects within 1 object stream
