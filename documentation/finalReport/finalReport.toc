@@ -1,0 +1,27 @@
+\contentsline {chapter}{\numberline {1}Introduction and Background Research}{1}%
+\contentsline {section}{\numberline {1.1}Introduction}{1}%
+\contentsline {section}{\numberline {1.2}Literature review}{1}%
+\contentsline {subsection}{\numberline {1.2.1}Natural language processing and text vectorization}{1}%
+\contentsline {subsection}{\numberline {1.2.2}Recommendation systems}{1}%
+\contentsline {chapter}{\numberline {2}Methods}{2}%
+\contentsline {section}{\numberline {2.1}A section}{2}%
+\contentsline {subsection}{\numberline {2.1.1}A sub-section}{2}%
+\contentsline {section}{\numberline {2.2}Another section}{2}%
+\contentsline {chapter}{\numberline {3}Results}{3}%
+\contentsline {section}{\numberline {3.1}A section}{3}%
+\contentsline {subsection}{\numberline {3.1.1}A sub-section}{3}%
+\contentsline {section}{\numberline {3.2}Another section}{3}%
+\contentsline {chapter}{\numberline {4}Discussion}{4}%
+\contentsline {section}{\numberline {4.1}Conclusions}{4}%
+\contentsline {section}{\numberline {4.2}Ideas for future work}{4}%
+\contentsline {chapter}{Appendices}{5}%
+\contentsline {chapter}{\numberline {A}Self-appraisal}{5}%
+\contentsline {section}{\numberline {A.1}Critical self-evaluation}{5}%
+\contentsline {section}{\numberline {A.2}Personal reflection and lessons learned}{5}%
+\contentsline {section}{\numberline {A.3}Legal, social, ethical and professional issues}{5}%
+\contentsline {subsection}{\numberline {A.3.1}Legal issues}{5}%
+\contentsline {subsection}{\numberline {A.3.2}Social issues}{5}%
+\contentsline {subsection}{\numberline {A.3.3}Ethical issues}{5}%
+\contentsline {subsection}{\numberline {A.3.4}Professional issues}{5}%
+\contentsline {chapter}{\numberline {B}External Material}{6}%
+\contentsline {chapter}{References}{5}%
