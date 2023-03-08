@@ -1,3 +1,10 @@
 /.venv/
 /data/
 /__pycache__/
+/resources/
+*.ann
+*.pickle
+/archive/*.ann
+/archive/*.pickle
+/ingredient2vec/*.pickle
+/ingredient2vec/*.npy
