@@ -1,0 +1,1 @@
+Generates Word2Vec training data for the dataset under /data/tokenised_recipes
