@@ -13,7 +13,7 @@ class RecommenderSystem:
         self.index_path = path
         self.vec_size = vec_size
         
-class IngredientRecommender:
+class IngredientRecommender(RecommenderSystem):
     """
     A base class for recommender systems that recommend using ingredients.
     """
@@ -37,6 +37,7 @@ class IngredientRecommender:
             # get closest vectors from the dataset
             rec_indexes = self.index.get_nns_by_vector(recipe_vec, n_recommendations)
             
+            print(rec_indexes)
             # translate recommendations into recipes
             recs = self.recipes.iloc[rec_indexes]
         

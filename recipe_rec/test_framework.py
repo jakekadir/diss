@@ -1,6 +1,6 @@
 from typing import List
 from pathlib import Path
-from data_loader import import_recipes
+from data_loader import get_recipes
 from recommender_system import RecommenderSystem
 from annoy import AnnoyIndex
 import pandas as pd
@@ -25,7 +25,7 @@ def generate_test_data(rec_systems: List[RecommenderSystem],
     })
     
     # load dataset
-    recipes = import_recipes(dataset_path)
+    recipes = get_recipes(dataset_path)
     
     # choose a sample of recipes to get recommendations for, fix across all systems
     sample = recipes.sample(n=num_recipes, random_state=RANDOM_STATE)

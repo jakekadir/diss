@@ -12,7 +12,7 @@ def parseTupleFunc(tupleStr: str):
 
         print(tupleStr)
 
-def import_recipes(path: pathlib.Path) -> pd.DataFrame:
+def get_recipes(path: pathlib.Path) -> pd.DataFrame:
     """
     Opens the recipe dataset at the specified path, converting the nested fields to array-like objects rather than strings.
 

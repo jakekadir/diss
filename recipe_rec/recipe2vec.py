@@ -2,7 +2,7 @@ from gensim.models import Word2Vec, KeyedVectors
 import logging  # Setting up the loggings to monitor gensim
 from pathlib import Path
 from annoy import AnnoyIndex
-from data_loader import import_recipes
+from data_loader import get_recipes
 from typing import List
 import numpy as np
 from recommender_system import IngredientRecommender
@@ -36,7 +36,7 @@ class Recipe2Vec(IngredientRecommender):
             logging.basicConfig(format="%(levelname)s - %(asctime)s: %(message)s", datefmt= '%H:%M:%S', level=logging.INFO)
         
         # load data
-        self.recipes = import_recipes(dataset_path).reset_index(drop=True)
+        self.recipes = get_recipes(dataset_path).reset_index(drop=True)
         
         vec_size = 100
         

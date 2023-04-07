@@ -1,6 +1,6 @@
 import pandas as pd
 import pathlib
-from data_loader import import_recipes
+from data_loader import get_recipes
 from sentence_transformers import SentenceTransformer
 from annoy import AnnoyIndex
 from pathlib import Path
@@ -34,9 +34,10 @@ class SBERTRecommender(IngredientRecommender):
         
         return recipe_vec
         
-    def generate_sbert_index(self, dataset_path: Path,
-                            col_to_embed: str,
-                            execution_id: str) -> pathlib.Path:
+    def generate_sbert_index(self, 
+                             dataset_path: Path,
+                             col_to_embed: str,
+                             execution_id: str) -> pathlib.Path:
         
         """
         Takes a path to a dataset, loads the data and produces sentence-BERT embeddings
@@ -51,21 +52,23 @@ class SBERTRecommender(IngredientRecommender):
         transformer_model: str = "paraphrase-MiniLM-L6-v2"
         self.model: SentenceTransformer = SentenceTransformer(transformer_model)
 
-        self.recipes: pd.DataFrame = import_recipes(dataset_path)
+        self.recipes: pd.DataFrame = get_recipes(dataset_path).reset_index(drop=True)
 
         # generate embeddings
         embeddings = self.model.encode(self.recipes[col_to_embed].values)
         embedding_indexes = zip(self.recipes[col_to_embed].index, embeddings)
         
-        index = AnnoyIndex(self.vec_size, "angular")
+        self.index = AnnoyIndex(self.vec_size, "angular")
 
-        for embed in embedding_indexes:
-            index.add_item(embed[0], embed[1])
+        for i in range(len(embeddings)):
+            self.index.add_item(i, embeddings[i])
+        # for embed in embedding_indexes:
+        #     self.index.add_item(embed[0], embed[1])
             
         out_path = f"sbert_{execution_id}.ann"
         
-        index.build(10)
-        index.save(out_path)
+        self.index.build(10)
+        self.index.save(out_path)
         
         return out_path
     
