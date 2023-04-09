@@ -26,7 +26,8 @@ def get_recipes(path: pathlib.Path) -> pd.DataFrame:
     recipes: pd.DataFrame = pd.read_csv(path)
 
     # embedded array columns
-    list_column_names: List[str] = ["RecipeInstructions", "RecipeIngredientParts", "Keywords", "Images"] # plus, needs tweaking "RecipeIngredientQuantities" 
+    # list_column_names: List[str] = ["RecipeInstructions", "RecipeIngredientParts", "Keywords", "Images"] # plus, needs tweaking "RecipeIngredientQuantities" 
+    list_column_names: List[str] = ["RecipeIngredientParts"]
     
     for col in list_column_names:
             
