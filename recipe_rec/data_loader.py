@@ -41,4 +41,5 @@ def get_recipes(path: pathlib.Path) -> pd.DataFrame:
 
         recipes[col] = recipes[col].apply(parseTupleFunc)
 
+    recipes = recipes.reset_index(drop=True)
     return recipes

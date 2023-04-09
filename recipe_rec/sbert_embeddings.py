@@ -46,7 +46,7 @@ class SBERTRecommender(IngredientRecommender):
         transformer_model: str = "paraphrase-MiniLM-L6-v2"
         self.model: SentenceTransformer = SentenceTransformer(transformer_model)
 
-        self.recipes: pd.DataFrame = get_recipes(dataset_path).reset_index(drop=True)
+        self.recipes: pd.DataFrame = get_recipes(dataset_path)
 
         # generate embeddings
         embeddings = self.model.encode(self.recipes[col_to_embed].values)

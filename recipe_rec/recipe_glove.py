@@ -17,7 +17,7 @@ class RecipeGlove(IngredientRecommender):
         self, dataset_path: str, verbose: bool, execution_id: str
     ) -> AnnoyIndex:
 
-        recipe_df = get_recipes(dataset_path).reset_index(drop=True)
+        recipe_df = get_recipes(dataset_path)
 
         self.recipes = recipe_df["RecipeIngredientParts"].apply(
             lambda tuple: list(tuple)

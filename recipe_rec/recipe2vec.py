@@ -38,7 +38,7 @@ class Recipe2Vec(IngredientRecommender):
             )
 
         # load data
-        self.recipes = get_recipes(dataset_path).reset_index(drop=True)
+        self.recipes = get_recipes(dataset_path)
 
         vec_size = 100
 
