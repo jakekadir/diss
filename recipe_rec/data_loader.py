@@ -3,6 +3,7 @@ import ast
 import pathlib
 from typing import List
 
+
 def parseTupleFunc(tupleStr: str):
 
     try:
@@ -11,6 +12,7 @@ def parseTupleFunc(tupleStr: str):
     except Exception as e:
 
         print(tupleStr)
+
 
 def get_recipes(path: pathlib.Path) -> pd.DataFrame:
     """
@@ -21,16 +23,16 @@ def get_recipes(path: pathlib.Path) -> pd.DataFrame:
     Outputs:
         pd.DataFrame, the prepared DataFrame of recipes
     """
-    
+
     # ingest data
     recipes: pd.DataFrame = pd.read_csv(path)
 
     # embedded array columns
-    # list_column_names: List[str] = ["RecipeInstructions", "RecipeIngredientParts", "Keywords", "Images"] # plus, needs tweaking "RecipeIngredientQuantities" 
+    # list_column_names: List[str] = ["RecipeInstructions", "RecipeIngredientParts", "Keywords", "Images"] # plus, needs tweaking "RecipeIngredientQuantities"
     list_column_names: List[str] = ["RecipeIngredientParts"]
-    
+
     for col in list_column_names:
-            
+
         recipes = recipes.drop(recipes[recipes[col].str[:2] != "c("].index)
 
         recipes[col] = recipes[col].str[1:]
@@ -40,4 +42,3 @@ def get_recipes(path: pathlib.Path) -> pd.DataFrame:
         recipes[col] = recipes[col].apply(parseTupleFunc)
 
     return recipes
-
