@@ -21,6 +21,8 @@ class SBERTRecommender(IngredientRecommender):
         index_distance_metric: str = "manhattan",
     ):
 
+        super().__init__()
+        
         self.index_distance_metric = index_distance_metric
         self.verbose = verbose
         # constants
@@ -118,7 +120,7 @@ class SBERTRecommender(IngredientRecommender):
         for i in range(len(self.ingredient_embeddings)):
             self.index.add_item(i, self.ingredient_embeddings[i])
 
-        out_path = f"sbert_{self.execution_id}.ann"
+        out_path = f"./recipe_rec/data/sbert_{self.execution_id}.ann"
 
         self.index.build(10)
         self.index.save(out_path)

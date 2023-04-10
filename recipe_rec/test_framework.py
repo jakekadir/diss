@@ -11,10 +11,8 @@ from recipe_rec.recommender_system import RecommenderSystem
 
 def generate_test_data(
     rec_systems: Dict[str, RecommenderSystem],
-    dataset_path: Path,
     num_recipes: int,
-    num_recommendations: int,
-    out_path: Path,
+    n_recommendations: int,
 ):
     # to store evaluation data
     evaluation_data = pd.DataFrame(
@@ -42,7 +40,7 @@ def generate_test_data(
             # get recommendations
             recommendations = rec_systems[system].get_recommendations(
                 recipe=recipes.loc[recipe_index]["RecipeIngredientParts"],
-                n_recommendations=10,
+                n_recommendations=n_recommendations,
                 search_id=recipe_index,
             )
 
@@ -94,4 +92,4 @@ def generate_test_data(
             # add to the master df
             evaluation_data = pd.concat([evaluation_data, recommendations])
 
-    evaluation_data.to_csv(out_path)
+    return evaluation_data

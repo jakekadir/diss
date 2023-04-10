@@ -10,6 +10,8 @@ class SimpleSearch(RecommenderSystem):
     def get_recommendations(
         self, recipe: List[str], n_recommendations: int = 10, search_id: int = None
     ) -> pd.DataFrame:
+        
+        super().__init__()
 
         # list of lists of ingredients
         recipe_ingredients = recipes["RecipeIngredientParts"]
