@@ -1,22 +1,21 @@
 from pathlib import Path
-from typing import List
+from typing import Dict
 
 import pandas as pd
 from annoy import AnnoyIndex
-from data_loader import get_recipes
-from recommender_system import RecommenderSystem
 
-RANDOM_STATE = 42
+from recipe_rec import RANDOM_STATE, recipes
+from recipe_rec.data_loader import get_recipes
+from recipe_rec.recommender_system import RecommenderSystem
 
 
 def generate_test_data(
-    rec_systems: List[RecommenderSystem],
+    rec_systems: Dict[str, RecommenderSystem],
     dataset_path: Path,
     num_recipes: int,
     num_recommendations: int,
     out_path: Path,
 ):
-
     # to store evaluation data
     evaluation_data = pd.DataFrame(
         {
@@ -24,14 +23,13 @@ def generate_test_data(
             "Rec_Description": [],
             "Rec_Ingredients": [],
             "Rec_System": [],
+            "Recommendation_Id": [],
+            "Rank": [],
             "Origin_Name": [],
             "Origin_Description": [],
             "Origin_Ingredients": [],
         }
     )
-
-    # load dataset
-    recipes = get_recipes(dataset_path)
 
     # choose a sample of recipes to get recommendations for, fix across all systems
     sample = recipes.sample(n=num_recipes, random_state=RANDOM_STATE)
@@ -39,44 +37,61 @@ def generate_test_data(
     # for each recommender
     for system in rec_systems:
 
-        index = AnnoyIndex(system.vec_size, "angular")
-        index.load(system.index_path)
+        for recipe_index in sample.index:
 
-        for recipe_index in sample.index.values:
-
-            # get the IDs of the recommendations
-            recommendation_ids = index.get_nns_by_item(
-                recipe_index, num_recommendations
+            # get recommendations
+            recommendations = rec_systems[system].get_recommendations(
+                recipe=recipes.loc[recipe_index]["RecipeIngredientParts"],
+                n_recommendations=10,
+                search_id=recipe_index,
             )
 
-            # get the full records for the recommendations
-            recommendations = recipes.iloc[recommendation_ids]
+            # drop the ID column for the recommendations to grab the recipe's IDs
+            recommendations.reset_index(inplace=True, names=["Recommendation_Id"])
+
+            # extract the new index to use as the rank of the recommendations
+            recommendations.reset_index(inplace=True, names=["Rank"])
 
             # note which system gave these recommendations
-            recommendations["Rec_System"] = system.name
+            recommendations["Rec_System"] = system
 
             # rename columns
-            recommendations = recommendations.rename(
+            recommendations.rename(
                 {
                     "Name": "Rec_Name",
                     "Description": "Rec_Description",
-                    "Ingredients": "Rec_Ingredients",
-                }
+                    "RecipeIngredientParts": "Rec_Ingredients",
+                },
+                axis=1,
+                inplace=True,
             )
 
             # drop unneeded columns
             recommendations = recommendations[
-                ["Rec_Name", "Rec_Description", "Rec_Ingredients", "Rec_System"]
+                [
+                    "Rec_Name",
+                    "Rec_Description",
+                    "Rec_Ingredients",
+                    "Rec_System",
+                    "Recommendation_Id",
+                    "Rank",
+                ]
             ]
 
             # get the details of the originating recipe
-            origin_recipe = sample.iloc[recipe_index]
 
-            recommendations["Origin_Name"] = origin_recipe["Name"]
-            recommendations["Origin_Description"] = origin_recipe["Description"]
-            recommendations["Origin_Ingredients"] = origin_recipe["Ingredients"]
+            recommendations["Origin_Name"] = [recipes.loc[recipe_index]["Name"]] * len(
+                recommendations.index
+            )
+            recommendations["Origin_Id"] = [recipe_index] * len(recommendations.index)
+            recommendations["Origin_Description"] = [
+                recipes.loc[recipe_index]["Description"]
+            ] * len(recommendations.index)
+            recommendations["Origin_Ingredients"] = [
+                recipes.loc[recipe_index]["RecipeIngredientParts"]
+            ] * len(recommendations.index)
 
             # add to the master df
-            pd.concat([evaluation_data, recommendations])
+            evaluation_data = pd.concat([evaluation_data, recommendations])
 
     evaluation_data.to_csv(out_path)

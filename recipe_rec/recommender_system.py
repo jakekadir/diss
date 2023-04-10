@@ -12,7 +12,7 @@ class RecommenderSystem:
     A base class for recommender systems.
     """
 
-    def __init__(self, name: str, path: Path, vec_size: int):
+    def __init__(self):
 
         # common attributes among all systems
 
@@ -31,7 +31,7 @@ class IngredientRecommender(RecommenderSystem):
         super().__init__()
 
     def get_recommendations(
-        self, recipe: List[str], n_recommendations: int = 10
+        self, recipe: List[str], n_recommendations: int = 10, search_id: int = None
     ) -> pd.DataFrame:
         """
         Creates a recipe vector from a list of ingredients and queries the Annoy index for the `n_recommendations` nearest neighbours.
@@ -51,8 +51,22 @@ class IngredientRecommender(RecommenderSystem):
             # get closest vectors from the dataset
             rec_indexes = self.index.get_nns_by_vector(recipe_vec, n_recommendations)
 
-            # translate recommendations into recipes
-            recs = recipes.iloc[rec_indexes]
+            # if there is a search id
+            if search_id is not None:
+
+                # if the search is in the results
+                if search_id in rec_indexes:
+
+                    # get another recommenation (shouldn't be the same one again)
+                    rec_indexes = self.index.get_nns_by_vector(
+                        recipe_vec, n_recommendations + 1
+                    )
+
+                    # filter out the search query
+                    rec_indexes = [rec for rec in rec_indexes if rec != search_id]
+
+            # map recommendations to recipes
+            recs = recipes.iloc[rec_indexes].copy()
 
             return recs
 
