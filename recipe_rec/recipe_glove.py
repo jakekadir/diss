@@ -1,11 +1,12 @@
 from pathlib import Path
+from typing import List
+
+import numpy as np
+import pandas as pd
 from annoy import AnnoyIndex
 from data_loader import get_recipes
-from typing import List
+from glove import Corpus, Glove
 from recommender_system import IngredientRecommender
-import pandas as pd
-from glove import Glove, Corpus
-import numpy as np
 
 
 class RecipeGlove(IngredientRecommender):

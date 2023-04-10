@@ -1,9 +1,10 @@
-from typing import List
 from pathlib import Path
+from typing import List
+
+import pandas as pd
+from annoy import AnnoyIndex
 from data_loader import get_recipes
 from recommender_system import RecommenderSystem
-from annoy import AnnoyIndex
-import pandas as pd
 
 RANDOM_STATE = 42
 

@@ -1,19 +1,78 @@
-import pandas as pd
+import logging
 import pathlib
-from data_loader import get_recipes
-from sentence_transformers import SentenceTransformer
-from annoy import AnnoyIndex
-from pathlib import Path
-from recommender_system import IngredientRecommender
+import pickle
+import uuid
 from typing import List
+
 import numpy as np
+from annoy import AnnoyIndex
+from sentence_transformers import SentenceTransformer
+
+from recipe_rec import recipes
+from recipe_rec.recommender_system import IngredientRecommender
 
 
 class SBERTRecommender(IngredientRecommender):
-    def __init__(self, dataset_path: Path, col_to_embed: str, execution_id: str):
-        super().__init__("SBERT", "", 384)
+    def __init__(
+        self,
+        embeddings_path: str = None,
+        index_path: str = None,
+        verbose: bool = True,
+        index_distance_metric: str = "manhattan",
+    ):
 
-        self.generate_sbert_index(dataset_path, col_to_embed, execution_id)
+        self.index_distance_metric = index_distance_metric
+        self.verbose = verbose
+        # constants
+        self.embedding_col = "RecipeIngredientParts"
+        self.vec_size = 384
+
+        self.disk_data = {"embeddings": embeddings_path, "index": index_path}
+
+        # load the transformer model
+        transformer_model: str = "paraphrase-MiniLM-L6-v2"
+        self.model: SentenceTransformer = SentenceTransformer(transformer_model)
+
+        if self.verbose:
+            logging.basicConfig(
+                format="%(levelname)s - %(asctime)s: %(message)s",
+                datefmt="%H:%M:%S",
+                level=logging.INFO,
+            )
+
+        if embeddings_path is None:
+
+            if verbose:
+                logging.info("Generating embeddings for the recipe dataset.")
+            # generate embeddings for ingredients
+            embeddings_path: str = self.generate_embeddings()
+
+            if verbose:
+                logging.info(f"Generated recipe embeddings at {embeddings_path}")
+        else:
+
+            if verbose:
+                logging.info("Loading recipe embeddings from disk.")
+            # load embeddings?
+            with open(embeddings_path, "rb") as f:
+                self.ingredient_embeddings = pickle.load(f)
+
+        if index_path is None:
+
+            if verbose:
+                logging.info("Building Annoy index from embeddings.")
+
+            # create index
+            built_index_path: str = self.build_index()
+
+            if verbose:
+                logging.info(f"Built Annoy Index at {built_index_path}")
+        else:
+
+            if verbose:
+                logging.info("Loading Annoy index from disk.")
+            # load index
+            self.load_index(index_path)
 
     def recipe_vectorizer(self, recipe: List[str]) -> np.ndarray:
         """
@@ -29,9 +88,21 @@ class SBERTRecommender(IngredientRecommender):
 
         return recipe_vec
 
-    def generate_sbert_index(
-        self, dataset_path: Path, col_to_embed: str, execution_id: str
-    ) -> pathlib.Path:
+    def generate_embeddings(self) -> str:
+
+        # generate embeddings
+        self.ingredient_embeddings = self.model.encode(
+            recipes[self.embedding_col].values
+        )
+
+        embeddings_path: str = f"./data/sbert_recipe_embeddings{self.execution_id}.pkl"
+        with open(embeddings_path, "wb") as f:
+
+            pickle.dump(self.ingredient_embeddings, f)
+
+        return embeddings_path
+
+    def build_index(self) -> str:
 
         """
         Takes a path to a dataset, loads the data and produces sentence-BERT embeddings
@@ -42,48 +113,19 @@ class SBERTRecommender(IngredientRecommender):
 
         """
 
-        # load the transformer model
-        transformer_model: str = "paraphrase-MiniLM-L6-v2"
-        self.model: SentenceTransformer = SentenceTransformer(transformer_model)
+        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
 
-        self.recipes: pd.DataFrame = get_recipes(dataset_path)
+        for i in range(len(self.ingredient_embeddings)):
+            self.index.add_item(i, self.ingredient_embeddings[i])
 
-        # generate embeddings
-        embeddings = self.model.encode(self.recipes[col_to_embed].values)
-        embedding_indexes = zip(self.recipes[col_to_embed].index, embeddings)
-
-        self.index = AnnoyIndex(self.vec_size, "angular")
-
-        for i in range(len(embeddings)):
-            self.index.add_item(i, embeddings[i])
-        # for embed in embedding_indexes:
-        #     self.index.add_item(embed[0], embed[1])
-
-        out_path = f"sbert_{execution_id}.ann"
+        out_path = f"sbert_{self.execution_id}.ann"
 
         self.index.build(10)
         self.index.save(out_path)
 
         return out_path
 
-    # def get_recommendations(self, recipe: List[str], n_recommendations: int) -> pd.DataFrame:
-    #     """
-    #     Creates a recipe vector from a list of ingredients and queries the Annoy index for the `n_recommendations` nearest neighbours.
+    def load_index(self, index_path: str):
 
-    #     Inputs:
-    #         - `recipe`: `List[str]`, a list of string ingredients
-    #         - `n_recommendations`: `int`, the number of recommendations to return
-    #     Outputs:
-    #         - `pd.DataFrame`, a sorted DataFrame of the recommended recipes
-    #     """
-
-    #     # get the vector of the recipe
-    #     recipe_vec = self.recipe_vectorizer(recipe)
-
-    #     # get closest vectors from the dataset
-    #     rec_indexes = self.index.get_nns_by_vector(recipe_vec, n_recommendations)
-
-    #     # translate recommendations into recipes
-    #     recs = self.recipes.iloc[rec_indexes]
-
-    #     return recs
+        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
+        self.index.load(index_path)

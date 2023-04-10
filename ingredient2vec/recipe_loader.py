@@ -1,5 +1,7 @@
-import pandas as pd
 import ast
+
+import pandas as pd
+
 
 # function to parse strings of lists as Python lists
 def parseTupleFunc(tuple_str: str):

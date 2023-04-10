@@ -1,23 +1,35 @@
-import pandas as pd
-from recommender_system import IngredientRecommender
-from data_loader import get_recipes
+import logging
+import pickle
 from pathlib import Path
+from typing import List
+
+import numpy as np
+import pandas as pd
+from annoy import AnnoyIndex
 from sentence_transformers import SentenceTransformer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.model_selection import train_test_split
 from tqdm import tqdm
-import numpy as np
 
-tqdm.pandas()
+from recipe_rec import recipes
+from recipe_rec.recommender_system import IngredientRecommender
 
 RANDOM_STATE = 42
 
 
 class FeatureGenerationRecommender(IngredientRecommender):
-    def __init__(self, dataset_path: Path, col_to_embed: str, execution_id: str):
+    def __init__(
+        self,
+        embeddings_path: str = None,
+        classifiers_path: str = None,
+        labelled_dataset_path: str = None,
+        index_distance_metric: str = "manhattan",
+        verbose: bool = True,
+        index_path: str = None,
+    ):
 
-        super().__init__("FeatureGeneration", "", 19)
+        super().__init__()
 
         self.labelled_cols = [
             "Savoury",
@@ -40,8 +52,115 @@ class FeatureGenerationRecommender(IngredientRecommender):
             "Fishy",
             "Firm",
         ]
+        self.vec_size = 19
+        self.verbose = verbose
 
-    def train_classifiers(self):
+        self.index_distance_metric = index_distance_metric
+
+        # load the transformer model
+        transformer_model: str = "paraphrase-MiniLM-L6-v2"
+        self.model: SentenceTransformer = SentenceTransformer(transformer_model)
+
+        if self.verbose:
+            logging.basicConfig(
+                format="%(levelname)s - %(asctime)s: %(message)s",
+                datefmt="%H:%M:%S",
+                level=logging.INFO,
+            )
+
+        # map inputs to object attribute
+        self.disk_data = {
+            "embeddings": embeddings_path,
+            "classifiers": classifiers_path,
+            "labelled_data": labelled_dataset_path,
+            "index": index_path,
+        }
+
+        # if no ingredient embeddings are given, make them
+        if self.disk_data["embeddings"] is None:
+
+            if verbose:
+                logging.info("Generating embeddings for the recipe dataset.")
+            # generate embeddings for ingredients
+            self.disk_data["embeddings"] = self.generate_embeddings()
+
+            if verbose:
+                logging.info(
+                    f"Generated recipe embeddings at {self.disk_data['embeddings']}"
+                )
+        else:
+
+            if verbose:
+                logging.info("Loading recipe embeddings from disk.")
+            # load embeddings?
+            with open(self.disk_data["embeddings"], "rb") as f:
+                self.ingredient_embeddings = pickle.load(f)
+
+        # if no trained classifiers are given
+        if self.disk_data["classifiers"] is None:
+
+            # train classifiers
+            if verbose:
+                logging.info("Training classifiers.")
+            self.disk_data["classifiers"]: str = self.train_classifiers()
+
+            if verbose:
+                logging.info(f"Saved classifiers to {self.disk_data['classifiers']}")
+        else:
+
+            if verbose:
+                logging.info("Loading pre-trained classifiers.")
+            # load classifiers
+            with open(classifiers_path, "rb") as f:
+                self.classifiers = pickle.load(f)
+
+        if labelled_dataset_path is None:
+
+            if verbose:
+                logging.info("Labelling dataset with classifiers.")
+            # label the dataset
+            self.disk_data["labelled_data"]: str = self.label_dataset()
+
+            if verbose:
+                logging.info(
+                    f"Labelled dataset and saved to disk at {self.disk_data['labelled_data']}"
+                )
+        else:
+
+            if verbose:
+                logging.info("Loading pre-labelled dataset.")
+            # load dataset
+            self.load_labelled_dataset(labelled_dataset_path)
+
+        if index_path is None:
+
+            # build an index
+            self.disk_data["index"]: str = self.build_index()
+
+            if verbose:
+                logging.info(f"Built index at {self.disk_data['index']}")
+        else:
+
+            # load the index
+            if verbose:
+                logging.info("Loading index from disk.")
+            self.load_index(index_path)
+
+    def generate_embeddings(self) -> str:
+
+        # generate embeddings
+        self.ingredient_embeddings = self.model.encode(
+            recipes[self.embedding_col].values
+        )
+
+        embeddings_path: str = f"./data/sbert_recipe_embeddings{self.execution_id}.pkl"
+        with open(embeddings_path, "wb") as f:
+
+            pickle.dump(self.ingredient_embeddings, f)
+
+        return embeddings_path
+
+    def train_classifiers(self) -> str:
 
         # import labelled dataset
         labelled_df = pd.read_csv(
@@ -75,11 +194,12 @@ class FeatureGenerationRecommender(IngredientRecommender):
             "recall": [],
         }
 
-        print("About to begin training.")
+        if self.verbose:
+            logging.info("About to begin training.")
 
         self.classifiers = {}
 
-        for col in tqdm(self.labelled_cols):
+        for col in self.labelled_cols:
 
             # prep and split dataset
             X = training_data["ingredient_vector"]
@@ -105,39 +225,76 @@ class FeatureGenerationRecommender(IngredientRecommender):
             metrics["precision"].append(precision_score(y_test, y_pred))
             metrics["recall"].append(recall_score(y_test, y_pred))
 
-        metrics_df = pd.DataFrame(metrics)
+        self.training_metrics = pd.DataFrame(metrics)
 
-        print(metrics_df)
+        if self.verbose:
+            logging.info("Clasifiers trained.")
 
-    def generate_features(self, verbose=True):
-        # load the full dataset
-        full_dataset = get_recipes("./data/recipes.csv")
-
-        if verbose:
-            print(f"Loaded {full_dataset.shape} recipes...")
-
-        # turn ingredients back into a string
-        full_dataset["RecipeIngredientParts"] = full_dataset[
-            "RecipeIngredientParts"
-        ].str.join(",")
-
-        # feature_predictor = lambda row, column: self.classifiers[column].predict(self.bert_encoder.encode(row["IngredientSBERTVector"]))
-        if verbose:
-            print("Encoding ingredients to SBERT vectors:")
-        encoded_ingredients = self.bert_encoder.encode(
-            full_dataset["RecipeIngredientParts"].values
+        classifier_out_path: str = (
+            f"./recipe_rec/data/trained_classifiers_{self.execution_id}.pkl"
         )
-        if verbose:
-            print("Predicting labels for food attributes")
+        with open(classifier_out_path, "wb") as f:
+
+            pickle.dump(self.classifiers, f)
+
+        return classifier_out_path
+
+    def label_dataset(self):
+
+        if self.verbose:
+            logging.info("Predicting labels for food attributes.")
+
         for col in tqdm(self.labelled_cols):
 
-            full_dataset[col] = self.classifiers[col].predict(encoded_ingredients)
+            recipes[col] = self.classifiers[col].predict(self.ingredient_embeddings)
 
-        if verbose:
-            print("Writing to CSV")
-        full_dataset.to_csv("predicted_features.csv")
+        self.labelled_dataset = recipes[self.labelled_cols]
 
+        labelled_path_out: str = (
+            f"./recipe_rec/data/labelled_dataset_{self.execution_id}.csv"
+        )
+        self.labelled_dataset.to_csv(labelled_path_out)
 
-recommender = FeatureGenerationRecommender("", "", "")
-recommender.train_classifiers()
-recommender.generate_features()
+        return labelled_path_out
+
+    def load_labelled_dataset(self, dataset_path: str):
+
+        self.labelled_dataset = pd.read_csv(dataset_path)
+
+    def build_index(self):
+
+        np_dataset = self.labelled_dataset.to_numpy()
+
+        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
+
+        for i, embed in enumerate(np_dataset):
+            self.index.add_item(i, embed)
+
+        if self.verbose:
+            logging.info("Storing index on disk.")
+
+        out_path = f"./data/feature_generation_{self.execution_id}.ann"
+
+        self.index.build(10)
+        self.index.save(out_path)
+
+        return out_path
+
+    def load_index(self, index_path: str):
+
+        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
+        self.index.load(index_path)
+
+    def recipe_vectorizer(self, ingredients: List[str]):
+
+        ingredient_str: str = ",".join(ingredients)
+
+        ingredient_embed = self.model.encode(ingredient_str)
+
+        recipe_vec = []
+
+        for col in self.labelled_cols:
+
+            recipe_vec.append(self.classifiers[col].predict([ingredient_embed])[0])
+
+        return np.array(recipe_vec)

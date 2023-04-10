@@ -1,6 +1,10 @@
+import uuid
 from pathlib import Path
 from typing import List
+
 import pandas as pd
+
+from recipe_rec import recipes
 
 
 class RecommenderSystem:
@@ -10,9 +14,12 @@ class RecommenderSystem:
 
     def __init__(self, name: str, path: Path, vec_size: int):
 
-        self.name = name
-        self.index_path = path
-        self.vec_size = vec_size
+        # common attributes among all systems
+
+        # unique ID for the class' instantiation
+        self.execution_id = str(uuid.uuid4().hex)
+        # filepaths of associated disk data
+        self.disk_data = {}
 
 
 class IngredientRecommender(RecommenderSystem):
@@ -20,8 +27,11 @@ class IngredientRecommender(RecommenderSystem):
     A base class for recommender systems that recommend using ingredients.
     """
 
+    def __init__(self):
+        super().__init__()
+
     def get_recommendations(
-        self, recipe: List[str], n_recommendations: int
+        self, recipe: List[str], n_recommendations: int = 10
     ) -> pd.DataFrame:
         """
         Creates a recipe vector from a list of ingredients and queries the Annoy index for the `n_recommendations` nearest neighbours.
@@ -41,9 +51,8 @@ class IngredientRecommender(RecommenderSystem):
             # get closest vectors from the dataset
             rec_indexes = self.index.get_nns_by_vector(recipe_vec, n_recommendations)
 
-            print(rec_indexes)
             # translate recommendations into recipes
-            recs = self.recipes.iloc[rec_indexes]
+            recs = recipes.iloc[rec_indexes]
 
             return recs
 

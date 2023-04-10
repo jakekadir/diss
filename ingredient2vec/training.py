@@ -1,14 +1,14 @@
-import tensorflow as tf
-from keras.models import Sequential
-from keras.layers import Embedding, Dot
-from keras.layers.core import Dense, Reshape
-import keras
-
-import pandas as pd
-import numpy as np
 import ast
-import tqdm
 import pickle
+
+import keras
+import numpy as np
+import pandas as pd
+import tensorflow as tf
+import tqdm
+from keras.layers import Dot, Embedding
+from keras.layers.core import Dense, Reshape
+from keras.models import Sequential
 
 RANDOM_SEED = 42
 AUTOTUNE = tf.data.AUTOTUNE

@@ -1,22 +1,18 @@
-from recommender_system import IngredientRecommender
-from data_loader import get_recipes
 from typing import List
+
 import pandas as pd
 
+from recipe_rec import recipes
+from recipe_rec.recommender_system import RecommenderSystem
 
-class SimpleSearch(IngredientRecommender):
-    def __init__(self):
 
-        super().__init__("", "", "")
-
-        self.recipes = get_recipes("../data/recipes.csv").reset_index()
-
-    def recipe_search(
+class SimpleSearch(RecommenderSystem):
+    def get_recommendations(
         self, ingredients: List[str], n_recommendations: int
     ) -> pd.DataFrame:
 
         # list of lists of ingredients
-        recipe_ingredients = self.recipes["RecipeIngredientParts"]
+        recipe_ingredients = recipes["RecipeIngredientParts"]
 
         # count length of the intersection of the set of the query ingredients and set of recipe ingredients
         counts = recipe_ingredients.apply(
@@ -24,7 +20,7 @@ class SimpleSearch(IngredientRecommender):
         )
 
         # sort for largest intersection
-        counts = counts.sort_values(ascending=True)
+        counts = counts.sort_values(ascending=False)
 
         # get top n_recommendations
-        return self.recipes.iloc[counts.head(n_recommendations).index]
+        return recipes.iloc[counts.head(n_recommendations).index]

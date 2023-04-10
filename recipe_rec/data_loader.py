@@ -1,7 +1,8 @@
-import pandas as pd
 import ast
 import pathlib
 from typing import List
+
+import pandas as pd
 
 
 def parseTupleFunc(tupleStr: str):
@@ -37,9 +38,9 @@ def get_recipes(path: pathlib.Path) -> pd.DataFrame:
 
         recipes[col] = recipes[col].str[1:]
 
-        parseTuple = lambda tupleStr: ast.literal_eval(tupleStr)
-
         recipes[col] = recipes[col].apply(parseTupleFunc)
+
+    recipes["IngredientsString"] = recipes["RecipeIngredientParts"].str.join(", ")
 
     recipes = recipes.reset_index(drop=True)
     return recipes

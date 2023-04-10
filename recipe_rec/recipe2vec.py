@@ -1,25 +1,99 @@
-from gensim.models import Word2Vec, KeyedVectors
-import logging  # Setting up the loggings to monitor gensim
+import logging
+import uuid
 from pathlib import Path
-from annoy import AnnoyIndex
-from data_loader import get_recipes
 from typing import List
+
 import numpy as np
-from recommender_system import IngredientRecommender
 import pandas as pd
+from annoy import AnnoyIndex
+from gensim.models import Word2Vec
+
+from recipe_rec import recipes
+from recipe_rec.recommender_system import IngredientRecommender
 
 
 class Recipe2Vec(IngredientRecommender):
-    def __init__(self, dataset_path: Path, verbose: bool, execution_id: str):
-        # set parent attributes
-        super().__init__("Recipe2Vec", "", 100)
+    def __init__(
+        self,
+        index_path: str = None,
+        model_path: str = None,
+        vec_size: int = 100,
+        index_distance_metric="manhattan",
+        verbose: bool = True,
+    ):
 
-        # generate the index
-        self.generate_recipe2vec_index(dataset_path, verbose, execution_id)
+        self.verbose = verbose
+        self.vec_size = vec_size
+        self.index_distance_metric = index_distance_metric
 
-    def generate_recipe2vec_index(
-        self, dataset_path: Path, verbose: bool, execution_id: str
-    ) -> AnnoyIndex:
+        self.disk_data = {"index": index_path, "model": model_path}
+
+        if self.verbose:
+            logging.basicConfig(
+                format="%(levelname)s - %(asctime)s: %(message)s",
+                datefmt="%H:%M:%S",
+                level=logging.INFO,
+            )
+
+        if self.disk_data["model"] is None:
+
+            if verbose:
+                logging.info("Training Word2Vec model.")
+
+            # need to build model and save vectors
+            self.disk_data["model"]: str = self.train_model()
+
+            if verbose:
+                logging.info(
+                    f"Trained Word2Vec model, stored at {self.disk_data['model']}"
+                )
+        else:
+
+            if verbose:
+                logging.info("Loading pre-trained model.")
+            # load model here
+            self.model = Word2Vec.load(self.disk_data["model"])
+
+            if verbose:
+                logging.info("Loaded pre-trained model.")
+
+        if self.disk_data["index"] is None:
+
+            if verbose:
+                logging.info("Building an index for the recipes using trained model.")
+            # need to build an index
+            self.disk_data["index"]: str = self.build_index()
+
+            if verbose:
+                logging.info(
+                    f"Built Annoy index and saved to {self.disk_data['index']}"
+                )
+
+        else:
+
+            if verbose:
+                logging.info("Loading pre-built Annoy index.")
+            self.load_index(self.disk_data["index"])
+
+    def train_model(self) -> str:
+
+        # create model
+        self.model = Word2Vec(
+            recipes["RecipeIngredientParts"].values,
+            # use skipgram, not CBOW
+            sg=1,
+            vector_size=self.vec_size,
+            # ensures rarely-occurring ingredients still are given a vector
+            min_count=1,
+            epochs=30,
+        )
+
+        model_path = f"./data/recipe2vec_{self.execution_id}.model"
+        self.model.save(model_path)
+
+        return model_path
+
+    def build_index(self) -> AnnoyIndex:
 
         """
         Takes a path to a dataset, loads the data and produces recipe2vec embeddings
@@ -30,62 +104,41 @@ class Recipe2Vec(IngredientRecommender):
 
         """
 
-        if verbose:
-            logging.basicConfig(
-                format="%(levelname)s - %(asctime)s: %(message)s",
-                datefmt="%H:%M:%S",
-                level=logging.INFO,
-            )
-
-        # load data
-        self.recipes = get_recipes(dataset_path)
-
-        vec_size = 100
-
-        # create model
-        self.model = Word2Vec(
-            self.recipes["RecipeIngredientParts"].values,
-            # use skipgram, not CBOW
-            sg=1,
-            vector_size=vec_size,
-            # ensures rarely-occurring ingredients still are given a vector
-            min_count=1,
-            epochs=30,
-        )
-
-        # train the model
-        # model.train(recipes, total_examples=model.corpus_count, epochs=30, report_delay=1)
-
-        # build vocab??
-        # model.build_vocab(recipes, progress_per=10000)
-
+        if self.verbose:
+            logging.info("Generating vectors for recipes.")
         # map the recipes to vectors
-        recipe_vectors: pd.Series = self.recipes["RecipeIngredientParts"].apply(
+        recipe_vectors: pd.Series = recipes["RecipeIngredientParts"].apply(
             self.recipe_vectorizer
         )
 
-        # saves the vectors to allow the index to be re-built
-        np.save("recipe2vec_vectors_{execution_id}.npy", recipe_vectors.values)
-
         # build an index
-        self.index = AnnoyIndex(vec_size, "angular")
+        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
 
+        if self.verbose:
+            logging.info("Populating Annoy index.")
         # populate
         for vec_index, vec in recipe_vectors.items():
             self.index.add_item(vec_index, vec)
 
+        if self.verbose:
+            logging.info("Storing index on disk.")
+
         # build and save
-        out_path = f"recipe2vec_{execution_id}.ann"
+        out_path = f"./data/recipe2vec_{self.execution_id}.ann"
 
         self.index.build(10)
         self.index.save(out_path)
 
         return out_path
 
+    def load_index(self, index_path: str):
+
+        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
+        self.index.load(index_path)
+
     def recipe_vectorizer(self, recipe: List[str]) -> np.ndarray:
         """
         Maps a list of ingredients in a recipe to the average of each ingredient's embedding vector.
-
         """
 
         ingredient_vecs = np.array([self.model.wv[ingredient] for ingredient in recipe])
@@ -93,30 +146,3 @@ class Recipe2Vec(IngredientRecommender):
         recipe_vec = np.mean(ingredient_vecs, axis=0)
 
         return recipe_vec
-
-    # def get_recommendations(self, recipe: List[str], n_recommendations: int) -> pd.DataFrame:
-    #     """
-    #     Creates a recipe vector from a list of ingredients and queries the Annoy index for the `n_recommendations` nearest neighbours.
-
-    #     Inputs:
-    #         - `recipe`: `List[str]`, a list of string ingredients
-    #         - `n_recommendations`: `int`, the number of recommendations to return
-    #     Outputs:
-    #         - `pd.DataFrame`, a sorted DataFrame of the recommended recipes
-    #     """
-
-    #     try:
-
-    #         # get the vector of the recipe
-    #         recipe_vec = self.recipe_vectorizer(recipe)
-
-    #         # get closest vectors from the dataset
-    #         rec_indexes = self.index.get_nns_by_vector(recipe_vec, n_recommendations)
-
-    #         # translate recommendations into recipes
-    #         recs = self.recipes.iloc[rec_indexes]
-
-    #         return recs
-
-    #     except KeyError:
-    #         raise ValueError("One of the given ingredients did not exist in the training dataset.")
