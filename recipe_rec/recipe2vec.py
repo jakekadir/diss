@@ -23,7 +23,7 @@ class Recipe2Vec(IngredientRecommender):
     ):
 
         super().__init__()
-        
+
         self.verbose = verbose
         self.vec_size = vec_size
         self.index_distance_metric = index_distance_metric

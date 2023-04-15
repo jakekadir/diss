@@ -11,7 +11,7 @@ from recipe_rec.recommender_system import RecommenderSystem
 
 def generate_test_data(
     rec_systems: Dict[str, RecommenderSystem],
-    num_recipes: int,
+    n_recipes: int,
     n_recommendations: int,
 ):
     # to store evaluation data
@@ -30,7 +30,7 @@ def generate_test_data(
     )
 
     # choose a sample of recipes to get recommendations for, fix across all systems
-    sample = recipes.sample(n=num_recipes, random_state=RANDOM_STATE)
+    sample = recipes.sample(n=n_recipes, random_state=RANDOM_STATE)
 
     # for each recommender
     for system in rec_systems:

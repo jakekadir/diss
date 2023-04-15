@@ -10,7 +10,7 @@ class SimpleSearch(RecommenderSystem):
     def get_recommendations(
         self, recipe: List[str], n_recommendations: int = 10, search_id: int = None
     ) -> pd.DataFrame:
-        
+
         super().__init__()
 
         # list of lists of ingredients
@@ -18,7 +18,7 @@ class SimpleSearch(RecommenderSystem):
 
         # count length of the intersection of the set of the query ingredients and set of recipe ingredients
         counts = recipe_ingredients.apply(
-            lambda ingrs: len(list(set(ingrs).intersection(set(recipe))))
+            lambda ingrs: len(set(ingrs).intersection(set(recipe)))
         )
 
         # sort for largest intersection

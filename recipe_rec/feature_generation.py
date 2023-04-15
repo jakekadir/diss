@@ -9,7 +9,7 @@ from annoy import AnnoyIndex
 from sentence_transformers import SentenceTransformer
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from tqdm import tqdm
 
 from recipe_rec import recipes
@@ -58,8 +58,8 @@ class FeatureGenerationRecommender(IngredientRecommender):
         self.index_distance_metric = index_distance_metric
 
         # load the transformer model
-        transformer_model: str = "paraphrase-MiniLM-L6-v2"
-        self.model: SentenceTransformer = SentenceTransformer(transformer_model)
+        transformer_model: str = "all-mpnet-base-v2"
+        self.bert_encoder: SentenceTransformer = SentenceTransformer(transformer_model)
 
         if self.verbose:
             logging.basicConfig(
@@ -149,7 +149,7 @@ class FeatureGenerationRecommender(IngredientRecommender):
     def generate_embeddings(self) -> str:
 
         # generate embeddings
-        self.ingredient_embeddings = self.model.encode(
+        self.ingredient_embeddings = self.bert_encoder.encode(
             recipes[self.embedding_col].values
         )
 
@@ -172,10 +172,7 @@ class FeatureGenerationRecommender(IngredientRecommender):
             "RecipeIngredientParts"
         ].str.replace('"', "")
 
-        model_name = "paraphrase-MiniLM-L6-v2"
-
         # encode ingredient string
-        self.bert_encoder = SentenceTransformer(model_name)
         encoded_ingredients = self.bert_encoder.encode(
             labelled_df["RecipeIngredientParts"].values
         )
@@ -199,27 +196,35 @@ class FeatureGenerationRecommender(IngredientRecommender):
 
         self.classifiers = {}
 
+        # prep and split dataset
+        X = training_data["ingredient_vector"]
+        Y = training_data[col]
+
+        X_train, X_test, y_train, y_test = train_test_split(
+            X, Y, test_size=0.30, random_state=RANDOM_STATE
+        )
+
         for col in self.labelled_cols:
 
-            # prep and split dataset
-            X = training_data["ingredient_vector"]
-            Y = training_data[col]
-
-            X_train, X_test, y_train, y_test = train_test_split(
-                X, Y, test_size=0.30, random_state=RANDOM_STATE
-            )
-
-            if np.isnan(y_train).any() or np.isnan(y_test).any():
-                print(col, "contains NaN")
             # initialise and fit model
             classifier_model = RandomForestClassifier()
-            classifier_model.fit(X_train, y_train)
+
+            params = {
+                "n_estimators": [50, 100, 150, 300, 500],
+                "criterion": ["gini", "entropy"],
+            }
+
+            random_search = RandomizedSearchCV(
+                classifier_model, params, random_state=RANDOM_STATE
+            )
+
+            best_model = random_search.fit(X_train, y_train)
 
             # assess model predictions
-            y_pred = classifier_model.predict(X_test)
+            y_pred = best_model.predict(X_test)
 
             metrics["col_name"].append(col)
-            self.classifiers[col] = classifier_model
+            self.classifiers[col] = best_model
             metrics["f1"].append(f1_score(y_test, y_pred))
             metrics["accuracy"].append(accuracy_score(y_test, y_pred))
             metrics["precision"].append(precision_score(y_test, y_pred))
@@ -259,7 +264,7 @@ class FeatureGenerationRecommender(IngredientRecommender):
 
     def load_labelled_dataset(self, dataset_path: str):
 
-        self.labelled_dataset = pd.read_csv(dataset_path)
+        self.labelled_dataset = pd.read_csv(dataset_path, index_col=0)
 
     def build_index(self):
 
@@ -273,7 +278,7 @@ class FeatureGenerationRecommender(IngredientRecommender):
         if self.verbose:
             logging.info("Storing index on disk.")
 
-        out_path = f"./data/feature_generation_{self.execution_id}.ann"
+        out_path = f"./recipe_rec/data/feature_generation_{self.execution_id}.ann"
 
         self.index.build(10)
         self.index.save(out_path)
@@ -289,7 +294,7 @@ class FeatureGenerationRecommender(IngredientRecommender):
 
         ingredient_str: str = ",".join(ingredients)
 
-        ingredient_embed = self.model.encode(ingredient_str)
+        ingredient_embed = self.bert_encoder.encode(ingredient_str)
 
         recipe_vec = []
 

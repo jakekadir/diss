@@ -22,7 +22,7 @@ class SBERTRecommender(IngredientRecommender):
     ):
 
         super().__init__()
-        
+
         self.index_distance_metric = index_distance_metric
         self.verbose = verbose
         # constants
@@ -32,7 +32,7 @@ class SBERTRecommender(IngredientRecommender):
         self.disk_data = {"embeddings": embeddings_path, "index": index_path}
 
         # load the transformer model
-        transformer_model: str = "paraphrase-MiniLM-L6-v2"
+        transformer_model: str = "all-mpnet-base-v2"
         self.model: SentenceTransformer = SentenceTransformer(transformer_model)
 
         if self.verbose:
