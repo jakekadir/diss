@@ -1,15 +1,14 @@
-from typing import List
+from typing import List, NoReturn
 
 import pandas as pd
 
 from recipe_rec import recipes
-from recipe_rec.recommender_system import (RecommenderSystem, build_timer,
-                                           rec_timer)
+from recipe_rec.recommender_system import RecommenderSystem, build_timer, rec_timer
 
 
 class SimpleSearch(RecommenderSystem):
     @build_timer
-    def __init__(self):
+    def __init__(self) -> None:
 
         super().__init__()
 
@@ -19,18 +18,15 @@ class SimpleSearch(RecommenderSystem):
         self, recipe: List[str], n_recommendations: int = 10, search_id: int = None
     ) -> pd.DataFrame:
 
-        # list of lists of ingredients
-        recipe_ingredients = recipes["RecipeIngredientParts"]
-
         # count length of the intersection of the set of the query ingredients and set of recipe ingredients
-        counts = recipe_ingredients.apply(
+        counts: pd.Series = recipes["RecipeIngredientParts"].apply(
             lambda ingrs: len(set(ingrs).intersection(set(recipe)))
         )
 
         # sort for largest intersection
         counts = counts.sort_values(ascending=False)
 
-        rec_indexes = counts.head(n_recommendations).index
+        rec_indexes: List[int] = list(counts.head(n_recommendations).index)
 
         # if there is a search id
         if search_id is not None:
@@ -39,7 +35,7 @@ class SimpleSearch(RecommenderSystem):
             if search_id in rec_indexes:
 
                 # get another recommenation (shouldn't be the same one again)
-                rec_indexes = counts.head(n_recommendations + 1).index
+                rec_indexes = list(counts.head(n_recommendations + 1).index)
 
                 # filter out the search query
                 rec_indexes = [rec for rec in rec_indexes if rec != search_id]
@@ -48,11 +44,18 @@ class SimpleSearch(RecommenderSystem):
         return recipes.iloc[rec_indexes].copy()
 
     # overwrite irrelevant methods
-    def build_ingredient_index(self):
+    def build_ingredient_index(self) -> NoReturn:
         raise NotImplementedError
-    
-    def build_index(self, iterable, num_trees: int, out_path: str, recipe_index: bool = True, save: bool = True):
+
+    def build_index(
+        self,
+        iterable,
+        num_trees: int,
+        out_path: str,
+        recipe_index: bool = True,
+        save: bool = True,
+    ) -> NoReturn:
         raise NotImplementedError
-    
-    def load_index(self, index_path: str):
+
+    def load_index(self, index_path: str) -> NoReturn:
         raise NotImplementedError

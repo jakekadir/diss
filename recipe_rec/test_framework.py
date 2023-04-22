@@ -1,11 +1,8 @@
-from pathlib import Path
 from typing import Dict
 
 import pandas as pd
-from annoy import AnnoyIndex
 
 from recipe_rec import RANDOM_STATE, recipes
-from recipe_rec.data_loader import get_recipes
 from recipe_rec.recommender_system import RecommenderSystem
 
 
@@ -13,7 +10,7 @@ def generate_test_data(
     rec_systems: Dict[str, RecommenderSystem],
     n_recipes: int,
     n_recommendations: int,
-):
+) -> pd.DataFrame:
     # to store evaluation data
     evaluation_data = pd.DataFrame(
         {
@@ -30,7 +27,7 @@ def generate_test_data(
     )
 
     # choose a sample of recipes to get recommendations for, fix across all systems
-    sample = recipes.sample(n=n_recipes, random_state=RANDOM_STATE)
+    sample: pd.DataFrame = recipes.sample(n=n_recipes, random_state=RANDOM_STATE)
 
     # for each recommender
     for system in rec_systems:
@@ -38,10 +35,11 @@ def generate_test_data(
         for recipe_index in sample.index:
 
             # get recommendations
-            recommendations = rec_systems[system].get_recommendations(
+            recommendations: pd.DataFrame = rec_systems[system].get_recommendations(
                 recipe=recipes.loc[recipe_index]["RecipeIngredientParts"],
                 n_recommendations=n_recommendations,
                 search_id=recipe_index,
+                get_recipes=True,
             )
 
             # drop the ID column for the recommendations to grab the recipe's IDs

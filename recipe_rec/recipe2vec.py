@@ -1,26 +1,13 @@
 import logging
-import uuid
-from pathlib import Path
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 import pandas as pd
-from annoy import AnnoyIndex
 from gensim.models import Word2Vec
 from gensim.models.callbacks import CallbackAny2Vec
 
 from recipe_rec import recipes
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
-
-
-class get_loss_callback(CallbackAny2Vec):
-    def __init__(self, rec_system):
-        self.epoch = 0
-        self.rec_system = rec_system
-
-    def on_epoch_end(self, model):
-
-        self.rec_system.training_losses.append(model.get_latest_training_loss())
 
 
 class Recipe2Vec(RecommenderSystem):
@@ -38,13 +25,13 @@ class Recipe2Vec(RecommenderSystem):
 
         super().__init__()
 
-        self.verbose = verbose
-        self.num_epochs = num_epochs
-        self.alpha = alpha
-        self.vec_size = vec_size
-        self.index_distance_metric = index_distance_metric
+        self.verbose: bool = verbose
+        self.num_epochs: int = num_epochs
+        self.alpha: float = alpha
+        self.vec_size: int = vec_size
+        self.index_distance_metric: str = index_distance_metric
 
-        self.disk_data = {"index": index_path, "model": model_path}
+        self.disk_data: Dict[str, str] = {"index": index_path, "model": model_path}
 
         if self.verbose:
             logging.basicConfig(
@@ -70,7 +57,7 @@ class Recipe2Vec(RecommenderSystem):
             if verbose:
                 logging.info("Loading pre-trained model.")
             # load model here
-            self.model = Word2Vec.load(self.disk_data["model"])
+            self.model: Word2Vec = Word2Vec.load(self.disk_data["model"])
 
             if verbose:
                 logging.info("Loaded pre-trained model.")
@@ -80,7 +67,7 @@ class Recipe2Vec(RecommenderSystem):
             if verbose:
                 logging.info("Building an index for the recipes using trained model.")
 
-            out_path = f"./data/recipe2vec_{self.execution_id}.ann"
+            out_path: str = f"./data/recipe2vec_{self.execution_id}.ann"
 
             recipe_vectors: pd.Series = recipes["RecipeIngredientParts"].apply(
                 self.recipe_vectorizer
@@ -92,7 +79,7 @@ class Recipe2Vec(RecommenderSystem):
                 num_trees=10,
                 out_path=out_path,
                 recipe_index=True,
-                save=True
+                save=True,
             )
 
             if verbose:
@@ -108,10 +95,10 @@ class Recipe2Vec(RecommenderSystem):
 
     def train_model(self) -> str:
 
-        self.training_losses = []
+        self.training_losses: List[float] = []
 
         # create model
-        self.model = Word2Vec(
+        self.model: Word2Vec = Word2Vec(
             recipes["RecipeIngredientParts"].values,
             # use skipgram, not CBOW
             sg=1,
@@ -124,55 +111,30 @@ class Recipe2Vec(RecommenderSystem):
             callbacks=[get_loss_callback(self)],
         )
 
-        model_path = f"./data/recipe2vec_{self.execution_id}.model"
+        model_path: str = f"./data/recipe2vec_{self.execution_id}.model"
         self.model.save(model_path)
 
         return model_path
 
-    # def build_index(self) -> AnnoyIndex:
-
-    #     """
-    #     Produces recipe2vec embeddings for the ingredients column of the dataset.
-
-    #     An Annoy Index is constructed for these embeddings and written to a file
-    #     which incorporates the execution_id in the filename.
-
-    #     """
-
-    #     if self.verbose:
-    #         logging.info("Generating vectors for recipes.")
-    #     # map the recipes to vectors
-        # recipe_vectors: pd.Series = recipes["RecipeIngredientParts"].apply(
-        #     self.recipe_vectorizer
-        # )
-
-    #     # build an index
-    #     self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
-
-    #     if self.verbose:
-    #         logging.info("Populating Annoy index.")
-    #     # populate
-    #     for vec_index, vec in recipe_vectors.items():
-    #         self.index.add_item(vec_index, vec)
-
-    #     if self.verbose:
-    #         logging.info("Storing index on disk.")
-
-    #     # build and save
-        # out_path = f"./data/recipe2vec_{self.execution_id}.ann"
-
-    #     self.index.build(10)
-    #     self.index.save(out_path)
-
-    #     return out_path
-
-    def recipe_vectorizer(self, recipe: List[str]) -> np.ndarray:
+    def recipe_vectorizer(self, recipe: List[str]) -> np.array:
         """
         Maps a list of ingredients in a recipe to the average of each ingredient's embedding vector.
         """
 
-        ingredient_vecs = np.array([self.model.wv[ingredient] for ingredient in recipe])
+        ingredient_vecs: np.array = np.array(
+            [self.model.wv[ingredient] for ingredient in recipe]
+        )
 
-        recipe_vec = np.mean(ingredient_vecs, axis=0)
+        recipe_vec: np.array = np.mean(ingredient_vecs, axis=0)
 
         return recipe_vec
+
+
+class get_loss_callback(CallbackAny2Vec):
+    def __init__(self, rec_system: Recipe2Vec):
+        self.epoch: int = 0
+        self.rec_system: Recipe2Vec = rec_system
+
+    def on_epoch_end(self, model):
+
+        self.rec_system.training_losses.append(model.get_latest_training_loss())

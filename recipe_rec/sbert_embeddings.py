@@ -1,8 +1,6 @@
 import logging
-import pathlib
 import pickle
-import uuid
-from typing import List
+from typing import Dict, List
 
 import numpy as np
 from annoy import AnnoyIndex
@@ -20,17 +18,20 @@ class SBERTRecommender(RecommenderSystem):
         index_path: str = None,
         verbose: bool = True,
         index_distance_metric: str = "manhattan",
-    ):
+    ) -> None:
 
         super().__init__()
 
-        self.index_distance_metric = index_distance_metric
-        self.verbose = verbose
+        self.index_distance_metric: str = index_distance_metric
+        self.verbose: bool = verbose
         # constants
-        self.embedding_col = "RecipeIngredientParts"
-        self.vec_size = 384
+        self.embedding_col: str = "RecipeIngredientParts"
+        self.vec_size: int = 384
 
-        self.disk_data = {"embeddings": embeddings_path, "index": index_path}
+        self.disk_data: Dict[str, str] = {
+            "embeddings": embeddings_path,
+            "index": index_path,
+        }
 
         # load the transformer model
         transformer_model: str = "all-MiniLM-L12-v2"
@@ -58,14 +59,14 @@ class SBERTRecommender(RecommenderSystem):
                 logging.info("Loading recipe embeddings from disk.")
             # load embeddings?
             with open(embeddings_path, "rb") as f:
-                self.ingredient_embeddings = pickle.load(f)
+                self.ingredient_embeddings: np.ndarray = pickle.load(f)
 
         if index_path is None:
 
             if verbose:
                 logging.info("Building Annoy index from embeddings.")
 
-            out_path = f"./recipe_rec/data/sbert_{self.execution_id}.ann"
+            out_path: str = f"./recipe_rec/data/sbert_{self.execution_id}.ann"
 
             # create index
             built_index_path: str = self.build_index(
@@ -73,7 +74,7 @@ class SBERTRecommender(RecommenderSystem):
                 num_trees=10,
                 out_path=out_path,
                 recipe_index=True,
-                save=True
+                save=True,
             )
 
             if verbose:
@@ -104,7 +105,7 @@ class SBERTRecommender(RecommenderSystem):
     def generate_embeddings(self) -> str:
 
         # generate embeddings
-        self.ingredient_embeddings = self.model.encode(
+        self.ingredient_embeddings: np.ndarray = self.model.encode(
             recipes[self.embedding_col].values, show_progress_bar=self.verbose
         )
 
@@ -114,31 +115,3 @@ class SBERTRecommender(RecommenderSystem):
             pickle.dump(self.ingredient_embeddings, f)
 
         return embeddings_path
-
-    # def build_index(self) -> str:
-
-    #     """
-    #     Takes a path to a dataset, loads the data and produces sentence-BERT embeddings
-    #     for a given column of the dataset.
-
-    #     An Annoy Index is constructed for these embeddings and written to a file
-    #     which incorporates the execution_id in the filename.
-
-    #     """
-
-    #     self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
-
-    #     for i in enumerate(self.ingredient_embeddings):
-    #         self.index.add_item(i, self.ingredient_embeddings[i])
-
-        out_path = f"./recipe_rec/data/sbert_{self.execution_id}.ann"
-
-    #     self.index.build(10)
-    #     self.index.save(out_path)
-
-    #     return out_path
-
-    def load_index(self, index_path: str):
-
-        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
-        self.index.load(index_path)

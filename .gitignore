@@ -2,6 +2,7 @@
 /data/
 /__pycache__/
 /resources/
+/temporary_files/
 **/*.model
 **/*.ann
 **/*.pkl

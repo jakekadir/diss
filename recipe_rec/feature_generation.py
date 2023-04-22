@@ -1,15 +1,12 @@
 import logging
 import pickle
-from pathlib import Path
-from typing import List
+from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
-from annoy import AnnoyIndex
 from sentence_transformers import SentenceTransformer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import (accuracy_score, f1_score, precision_score,
-                             recall_score)
+from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from tqdm import tqdm
 
@@ -29,11 +26,11 @@ class FeatureGenerationRecommender(RecommenderSystem):
         index_distance_metric: str = "manhattan",
         verbose: bool = True,
         index_path: str = None,
-    ):
+    ) -> None:
 
         super().__init__()
 
-        self.labelled_cols = [
+        self.labelled_cols: List[str] = [
             "Savoury",
             "Rough",
             "Hot",
@@ -54,11 +51,11 @@ class FeatureGenerationRecommender(RecommenderSystem):
             "Fishy",
             "Firm",
         ]
-        self.vec_size = 19
-        self.verbose = verbose
+        self.vec_size: int = 19
+        self.verbose: bool = verbose
 
-        self.index_distance_metric = index_distance_metric
-        self.embedding_col = "RecipeIngredientParts"
+        self.index_distance_metric: str = index_distance_metric
+        self.embedding_col: str = "RecipeIngredientParts"
 
         # load the transformer model
         transformer_model: str = "all-MiniLM-L12-v2"
@@ -72,7 +69,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
             )
 
         # map inputs to object attribute
-        self.disk_data = {
+        self.disk_data: Dict[str, str] = {
             "embeddings": embeddings_path,
             "classifiers": classifiers_path,
             "labelled_data": labelled_dataset_path,
@@ -85,7 +82,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
             if verbose:
                 logging.info("Generating embeddings for the recipe dataset.")
             # generate embeddings for ingredients
-            self.disk_data["embeddings"] = self.generate_embeddings()
+            self.disk_data["embeddings"]: str = self.generate_embeddings()
 
             if verbose:
                 logging.info(
@@ -97,7 +94,8 @@ class FeatureGenerationRecommender(RecommenderSystem):
                 logging.info("Loading recipe embeddings from disk.")
             # load embeddings?
             with open(self.disk_data["embeddings"], "rb") as f:
-                self.ingredient_embeddings = pickle.load(f)
+
+                self.ingredient_embeddings: np.ndarray = pickle.load(f)
 
         # if no trained classifiers are given
         if self.disk_data["classifiers"] is None:
@@ -115,7 +113,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
                 logging.info("Loading pre-trained classifiers.")
             # load classifiers
             with open(classifiers_path, "rb") as f:
-                self.classifiers = pickle.load(f)
+                self.classifiers: Dict[str, RandomForestClassifier] = pickle.load(f)
 
         if labelled_dataset_path is None:
 
@@ -133,11 +131,15 @@ class FeatureGenerationRecommender(RecommenderSystem):
             if verbose:
                 logging.info("Loading pre-labelled dataset.")
             # load dataset
-            self.load_labelled_dataset(labelled_dataset_path)
+            self.labelled_dataset: pd.DataFrame = pd.read_csv(
+                labelled_dataset_path, index_col=0
+            )
 
         if index_path is None:
-            np_dataset = self.labelled_dataset.to_numpy()
-            out_path = f"./recipe_rec/data/feature_generation_{self.execution_id}.ann"
+            np_dataset: np.ndarray = self.labelled_dataset.to_numpy()
+            out_path: str = (
+                f"./recipe_rec/data/feature_generation_{self.execution_id}.ann"
+            )
 
             # build an index
             self.disk_data["index"]: str = self.build_index(
@@ -145,8 +147,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
                 num_trees=10,
                 out_path=out_path,
                 recipe_index=True,
-                save=True
-                
+                save=True,
             )
             if verbose:
                 logging.info(f"Built index at {self.disk_data['index']}")
@@ -155,12 +156,13 @@ class FeatureGenerationRecommender(RecommenderSystem):
             # load the index
             if verbose:
                 logging.info("Loading index from disk.")
+
             self.load_index(index_path)
 
     def generate_embeddings(self) -> str:
 
         # generate embeddings
-        self.ingredient_embeddings = self.bert_encoder.encode(
+        self.ingredient_embeddings: np.ndarray = self.bert_encoder.encode(
             recipes[self.embedding_col].values
         )
 
@@ -174,7 +176,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
     def train_classifiers(self) -> str:
 
         # import labelled dataset
-        labelled_df = pd.read_csv(
+        labelled_df: pd.DataFrame = pd.read_csv(
             "./feature_generation/trimmed_labelled_slim.csv", nrows=300
         )
 
@@ -184,17 +186,19 @@ class FeatureGenerationRecommender(RecommenderSystem):
         ].str.replace('"', "")
 
         # encode ingredient string
-        encoded_ingredients = self.bert_encoder.encode(
+        encoded_ingredients: np.ndarray = self.bert_encoder.encode(
             labelled_df["RecipeIngredientParts"].values
         )
 
         # bundle into a training data dict
-        training_data = {"ingredient_vector": encoded_ingredients}
+        training_data: Dict[str, np.ndarray] = {
+            "ingredient_vector": encoded_ingredients
+        }
 
         for col in self.labelled_cols:
             training_data[col] = labelled_df[col].values
 
-        metrics = {
+        metrics: Dict[str, Union[List[float], List[str]]] = {
             "col_name": [],
             "accuracy": [],
             "f1": [],
@@ -205,12 +209,16 @@ class FeatureGenerationRecommender(RecommenderSystem):
         if self.verbose:
             logging.info("About to begin training.")
 
-        self.classifiers = {}
+        self.classifiers: Dict[str, RandomForestClassifier] = {}
 
         # prep and split dataset
-        X = training_data["ingredient_vector"]
-        Y = training_data[col]
+        X: np.ndarray = training_data["ingredient_vector"]
+        Y: np.ndarray = training_data[col]
 
+        X_train: np.ndarray
+        X_test: np.ndarray
+        y_train: np.ndarray
+        y_test: np.ndarray
         X_train, X_test, y_train, y_test = train_test_split(
             X, Y, test_size=0.30, random_state=RANDOM_STATE
         )
@@ -218,21 +226,21 @@ class FeatureGenerationRecommender(RecommenderSystem):
         for col in self.labelled_cols:
 
             # initialise and fit model
-            classifier_model = RandomForestClassifier()
+            classifier_model: RandomForestClassifier = RandomForestClassifier()
 
-            params = {
+            params: Dict[str, Union[List[int], List[str]]] = {
                 "n_estimators": [50, 100, 150, 300, 500],
                 "criterion": ["gini", "entropy"],
             }
 
-            random_search = RandomizedSearchCV(
+            random_search: RandomizedSearchCV = RandomizedSearchCV(
                 classifier_model, params, random_state=RANDOM_STATE
             )
 
-            best_model = random_search.fit(X_train, y_train)
+            best_model: RandomForestClassifier = random_search.fit(X_train, y_train)
 
             # assess model predictions
-            y_pred = best_model.predict(X_test)
+            y_pred: np.ndarray = best_model.predict(X_test)
 
             metrics["col_name"].append(col)
             self.classifiers[col] = best_model
@@ -241,7 +249,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
             metrics["precision"].append(precision_score(y_test, y_pred))
             metrics["recall"].append(recall_score(y_test, y_pred))
 
-        self.training_metrics = pd.DataFrame(metrics)
+        self.training_metrics: pd.DataFrame = pd.DataFrame(metrics)
 
         if self.verbose:
             logging.info("Clasifiers trained.")
@@ -255,7 +263,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         return classifier_out_path
 
-    def label_dataset(self):
+    def label_dataset(self) -> None:
 
         if self.verbose:
             logging.info("Predicting labels for food attributes.")
@@ -264,7 +272,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
             recipes[col] = self.classifiers[col].predict(self.ingredient_embeddings)
 
-        self.labelled_dataset = recipes[self.labelled_cols]
+        self.labelled_dataset: pd.DataFrame = recipes[self.labelled_cols]
 
         labelled_path_out: str = (
             f"./recipe_rec/data/labelled_dataset_{self.execution_id}.csv"
@@ -273,19 +281,15 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         return labelled_path_out
 
-    def load_labelled_dataset(self, dataset_path: str):
-
-        self.labelled_dataset = pd.read_csv(dataset_path, index_col=0)
-
     def recipe_vectorizer(self, ingredients: List[str]):
 
         ingredient_str: str = ",".join(ingredients)
 
-        ingredient_embed = self.bert_encoder.encode(
+        ingredient_embed: np.ndarray = self.bert_encoder.encode(
             ingredient_str, show_progress_bar=self.verbose
         )
 
-        recipe_vec = []
+        recipe_vec: List[int] = []
 
         for col in self.labelled_cols:
 

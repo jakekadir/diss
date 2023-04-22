@@ -5,7 +5,7 @@ from typing import List
 import pandas as pd
 
 
-def parseTupleFunc(tupleStr: str):
+def parseTupleFunc(tupleStr: str) -> List[str]:
 
     try:
         return ast.literal_eval(tupleStr)
@@ -43,4 +43,5 @@ def get_recipes(path: pathlib.Path) -> pd.DataFrame:
     recipes["IngredientsString"] = recipes["RecipeIngredientParts"].str.join(", ")
 
     recipes = recipes.reset_index(drop=True)
+
     return recipes
