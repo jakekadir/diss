@@ -8,17 +8,19 @@ import pandas as pd
 from annoy import AnnoyIndex
 from sentence_transformers import SentenceTransformer
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import (accuracy_score, f1_score, precision_score,
+                             recall_score)
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from tqdm import tqdm
 
 from recipe_rec import recipes
-from recipe_rec.recommender_system import IngredientRecommender
+from recipe_rec.recommender_system import RecommenderSystem, build_timer
 
 RANDOM_STATE = 42
 
 
-class FeatureGenerationRecommender(IngredientRecommender):
+class FeatureGenerationRecommender(RecommenderSystem):
+    @build_timer
     def __init__(
         self,
         embeddings_path: str = None,
@@ -56,9 +58,10 @@ class FeatureGenerationRecommender(IngredientRecommender):
         self.verbose = verbose
 
         self.index_distance_metric = index_distance_metric
+        self.embedding_col = "RecipeIngredientParts"
 
         # load the transformer model
-        transformer_model: str = "all-mpnet-base-v2"
+        transformer_model: str = "all-MiniLM-L12-v2"
         self.bert_encoder: SentenceTransformer = SentenceTransformer(transformer_model)
 
         if self.verbose:
@@ -133,10 +136,18 @@ class FeatureGenerationRecommender(IngredientRecommender):
             self.load_labelled_dataset(labelled_dataset_path)
 
         if index_path is None:
+            np_dataset = self.labelled_dataset.to_numpy()
+            out_path = f"./recipe_rec/data/feature_generation_{self.execution_id}.ann"
 
             # build an index
-            self.disk_data["index"]: str = self.build_index()
-
+            self.disk_data["index"]: str = self.build_index(
+                iterable=np_dataset,
+                num_trees=10,
+                out_path=out_path,
+                recipe_index=True,
+                save=True
+                
+            )
             if verbose:
                 logging.info(f"Built index at {self.disk_data['index']}")
         else:
@@ -266,35 +277,13 @@ class FeatureGenerationRecommender(IngredientRecommender):
 
         self.labelled_dataset = pd.read_csv(dataset_path, index_col=0)
 
-    def build_index(self):
-
-        np_dataset = self.labelled_dataset.to_numpy()
-
-        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
-
-        for i, embed in enumerate(np_dataset):
-            self.index.add_item(i, embed)
-
-        if self.verbose:
-            logging.info("Storing index on disk.")
-
-        out_path = f"./recipe_rec/data/feature_generation_{self.execution_id}.ann"
-
-        self.index.build(10)
-        self.index.save(out_path)
-
-        return out_path
-
-    def load_index(self, index_path: str):
-
-        self.index = AnnoyIndex(self.vec_size, self.index_distance_metric)
-        self.index.load(index_path)
-
     def recipe_vectorizer(self, ingredients: List[str]):
 
         ingredient_str: str = ",".join(ingredients)
 
-        ingredient_embed = self.bert_encoder.encode(ingredient_str)
+        ingredient_embed = self.bert_encoder.encode(
+            ingredient_str, show_progress_bar=self.verbose
+        )
 
         recipe_vec = []
 

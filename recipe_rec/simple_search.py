@@ -3,15 +3,21 @@ from typing import List
 import pandas as pd
 
 from recipe_rec import recipes
-from recipe_rec.recommender_system import RecommenderSystem
+from recipe_rec.recommender_system import (RecommenderSystem, build_timer,
+                                           rec_timer)
 
 
 class SimpleSearch(RecommenderSystem):
+    @build_timer
+    def __init__(self):
+
+        super().__init__()
+
+    # overwrite parent method
+    @rec_timer
     def get_recommendations(
         self, recipe: List[str], n_recommendations: int = 10, search_id: int = None
     ) -> pd.DataFrame:
-
-        super().__init__()
 
         # list of lists of ingredients
         recipe_ingredients = recipes["RecipeIngredientParts"]
@@ -40,3 +46,13 @@ class SimpleSearch(RecommenderSystem):
 
         # get top n_recommendations
         return recipes.iloc[rec_indexes].copy()
+
+    # overwrite irrelevant methods
+    def build_ingredient_index(self):
+        raise NotImplementedError
+    
+    def build_index(self, iterable, num_trees: int, out_path: str, recipe_index: bool = True, save: bool = True):
+        raise NotImplementedError
+    
+    def load_index(self, index_path: str):
+        raise NotImplementedError
