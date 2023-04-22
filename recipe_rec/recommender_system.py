@@ -1,5 +1,6 @@
 import time
 import uuid
+from pathlib import Path
 from typing import Any, Dict, Iterable, List, Union
 
 import numpy as np
@@ -62,11 +63,11 @@ class RecommenderSystem:
         # unique ID for the class' instantiation
         self.execution_id: str = str(uuid.uuid4().hex)
         # filepaths of associated disk data
-        self.disk_data: Dict[str, str] = {}
+        self.disk_data: Dict[str, Path] = {}
 
         self.rec_times: Dict[str, Union[List[int], float]] = {"times": [], "avg": 0.0}
 
-    def build_ingredient_index(self, num_trees: int, out_path: str) -> None:
+    def build_ingredient_index(self, num_trees: int, out_path: Path) -> None:
 
         ingredient_embeddings: List[np.array] = []
         # get vectors for each ingredient using recipe vectorizer
@@ -81,16 +82,14 @@ class RecommenderSystem:
             num_trees=num_trees,
             out_path=out_path,
             recipe_index=False,
-            save=True,
         )
 
     def build_index(
         self,
         iterable: Iterable,
         num_trees: int,
-        out_path: str,
+        out_path: Union[Path, None],
         recipe_index: bool = True,
-        save: bool = True,
     ) -> None:
 
         # create index using class attributes
@@ -103,8 +102,11 @@ class RecommenderSystem:
         # build and save
         index.build(num_trees)
 
-        if save:
-            index.save(out_path)
+        if out_path is not None:
+
+            # convert to str; annoy doesn't support pathlib
+            out_path_str = out_path.absolute().as_posix()
+            index.save(out_path_str)
 
         # set to relevant class attribute
         if recipe_index:
@@ -112,10 +114,12 @@ class RecommenderSystem:
         else:
             self.ingredient_index: AnnoyIndex = index
 
-    def load_index(self, index_path: str) -> None:
+    def load_index(self, index_path: Path) -> None:
+
+        index_path_str = index_path.absolute().as_posix()
 
         self.index: AnnoyIndex = AnnoyIndex(self.vec_size, self.index_distance_metric)
-        self.index.load(index_path)
+        self.index.load(index_path_str)
 
     @rec_timer
     def get_recommendations(

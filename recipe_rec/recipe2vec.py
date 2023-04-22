@@ -1,4 +1,5 @@
 import logging
+from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
@@ -8,6 +9,7 @@ from gensim.models.callbacks import CallbackAny2Vec
 
 from recipe_rec import recipes
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
+from recipe_rec.utilities import check_file_exists, check_is_dir
 
 
 class Recipe2Vec(RecommenderSystem):
@@ -20,101 +22,119 @@ class Recipe2Vec(RecommenderSystem):
         alpha: float = 0.025,
         vec_size: int = 100,
         index_distance_metric="manhattan",
+        output_dir: Path = Path("."),
         verbose: bool = True,
     ):
 
         super().__init__()
 
-        self.verbose: bool = verbose
         self.num_epochs: int = num_epochs
         self.alpha: float = alpha
         self.vec_size: int = vec_size
         self.index_distance_metric: str = index_distance_metric
+        self.output_dir: Path = check_is_dir(output_dir)
+        self.verbose: bool = verbose
 
-        self.disk_data: Dict[str, str] = {"index": index_path, "model": model_path}
-
+        self.logger = logging.getLogger(__name__)
         if self.verbose:
-            logging.basicConfig(
-                format="%(levelname)s - %(asctime)s: %(message)s",
-                datefmt="%H:%M:%S",
-                level=logging.INFO,
-            )
+            self.logger.setLevel(logging.INFO)
+        else:
+            self.logger.setLevel(logging.CRITICAL)
+
+        self.disk_data: Dict[str, Path] = {"index": index_path, "model": model_path}
+
+        # check files exist
+        for filepath in self.disk_data.values():
+
+            if filepath is not None:
+
+                check_file_exists(filepath)
 
         if self.disk_data["model"] is None:
 
-            if verbose:
-                logging.info("Training Word2Vec model.")
+            self.logger.info("Training Word2Vec model.")
 
             # need to build model and save vectors
-            self.disk_data["model"]: str = self.train_model()
+            self.disk_data["model"] = self.train_model()
 
-            if verbose:
-                logging.info(
-                    f"Trained Word2Vec model, stored at {self.disk_data['model']}"
-                )
+            self.logger.info(
+                f"Trained Word2Vec model, stored at {self.disk_data['model']}"
+            )
         else:
 
-            if verbose:
-                logging.info("Loading pre-trained model.")
+            self.logger.info("Loading pre-trained model.")
             # load model here
             self.model: Word2Vec = Word2Vec.load(self.disk_data["model"])
 
-            if verbose:
-                logging.info("Loaded pre-trained model.")
+            self.logger.info("Loaded pre-trained model.")
 
         if self.disk_data["index"] is None:
 
-            if verbose:
-                logging.info("Building an index for the recipes using trained model.")
+            self.logger.info("Building an index for the recipes using trained model.")
 
-            out_path: str = f"./data/recipe2vec_{self.execution_id}.ann"
+            out_path: Path = Path(
+                self.output_dir, f"recipe2vec_{self.execution_id}.ann"
+            )
 
             recipe_vectors: pd.Series = recipes["RecipeIngredientParts"].apply(
                 self.recipe_vectorizer
             )
 
             # need to build an index
-            self.disk_data["index"]: str = self.build_index(
+            self.build_index(
                 iterable=recipe_vectors,
                 num_trees=10,
                 out_path=out_path,
                 recipe_index=True,
                 save=True,
             )
+            self.disk_data["index"] = out_path
 
-            if verbose:
-                logging.info(
-                    f"Built Annoy index and saved to {self.disk_data['index']}"
-                )
+            self.logger.info(
+                f"Built Annoy index and saved to {self.disk_data['index']}"
+            )
 
         else:
 
-            if verbose:
-                logging.info("Loading pre-built Annoy index.")
+            self.logger.info("Loading pre-built Annoy index.")
             self.load_index(self.disk_data["index"])
 
-    def train_model(self) -> str:
+    def train_model(self) -> Path:
 
         self.training_losses: List[float] = []
 
-        # create model
-        self.model: Word2Vec = Word2Vec(
-            recipes["RecipeIngredientParts"].values,
-            # use skipgram, not CBOW
-            sg=1,
-            vector_size=self.vec_size,
-            alpha=self.alpha,
-            # ensures rarely-occurring ingredients still are given a vector
-            min_count=1,
-            epochs=self.num_epochs,
-            compute_loss=True,
-            callbacks=[get_loss_callback(self)],
-        )
+        # temporarily change root logger level to hide excessive gensim outputs
+        prev_log_level: int = logging.getLogger().getEffectiveLevel()
+        logging.getLogger().setLevel(logging.WARNING)
 
-        model_path: str = f"./data/recipe2vec_{self.execution_id}.model"
-        self.model.save(model_path)
+        try:
+            # create model
+            self.model: Word2Vec = Word2Vec(
+                recipes["RecipeIngredientParts"].values,
+                # use skipgram, not CBOW
+                sg=1,
+                vector_size=self.vec_size,
+                alpha=self.alpha,
+                # ensures rarely-occurring ingredients still are given a vector
+                min_count=1,
+                epochs=self.num_epochs,
+                compute_loss=True,
+                callbacks=[get_loss_callback(self)],
+            )
 
-        return model_path
+            # write to file
+            model_path: Path = Path(
+                self.output_dir, f"recipe2vec_{self.execution_id}.model"
+            )
+            self.model.save(model_path)
+
+            return model_path
+
+        except Exception as e:
+            self.logger.warn(e)
+
+        # restore root logger back to normal level
+        logging.getLogger().setLevel(prev_log_level)
 
     def recipe_vectorizer(self, recipe: List[str]) -> np.array:
         """
@@ -131,10 +151,18 @@ class Recipe2Vec(RecommenderSystem):
 
 
 class get_loss_callback(CallbackAny2Vec):
+    """
+    Gets training loss after each epoch and logs the current epoch number.
+    """
+
     def __init__(self, rec_system: Recipe2Vec):
-        self.epoch: int = 0
+        self.epoch: int = 1
         self.rec_system: Recipe2Vec = rec_system
 
     def on_epoch_end(self, model):
 
         self.rec_system.training_losses.append(model.get_latest_training_loss())
+
+        self.rec_system.logger.info(f"Completed epoch {self.epoch}.")
+
+        self.epoch += 1

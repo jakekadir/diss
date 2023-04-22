@@ -1,3 +1,4 @@
+from pathlib import Path
 from typing import List, NoReturn
 
 import pandas as pd
@@ -51,11 +52,11 @@ class SimpleSearch(RecommenderSystem):
         self,
         iterable,
         num_trees: int,
-        out_path: str,
+        out_path: Path,
         recipe_index: bool = True,
         save: bool = True,
     ) -> NoReturn:
         raise NotImplementedError
 
-    def load_index(self, index_path: str) -> NoReturn:
+    def load_index(self, index_path: Path) -> NoReturn:
         raise NotImplementedError

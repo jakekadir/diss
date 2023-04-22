@@ -1,5 +1,6 @@
 import logging
 import pickle
+from pathlib import Path
 from typing import Dict, List, Union
 
 import numpy as np
@@ -12,6 +13,7 @@ from tqdm import tqdm
 
 from recipe_rec import recipes
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
+from recipe_rec.utilities import check_file_exists, check_is_dir
 
 RANDOM_STATE = 42
 
@@ -20,12 +22,13 @@ class FeatureGenerationRecommender(RecommenderSystem):
     @build_timer
     def __init__(
         self,
-        embeddings_path: str = None,
-        classifiers_path: str = None,
-        labelled_dataset_path: str = None,
+        embeddings_path: Path = None,
+        classifiers_path: Path = None,
+        labelled_dataset_path: Path = None,
+        index_path: Path = None,
         index_distance_metric: str = "manhattan",
+        output_dir: Path = Path("."),
         verbose: bool = True,
-        index_path: str = None,
     ) -> None:
 
         super().__init__()
@@ -52,7 +55,14 @@ class FeatureGenerationRecommender(RecommenderSystem):
             "Firm",
         ]
         self.vec_size: int = 19
+        self.output_dir: Path = check_is_dir(output_dir)
         self.verbose: bool = verbose
+
+        self.logger = logging.getLogger(__name__)
+        if self.verbose:
+            self.logger.setLevel(logging.INFO)
+        else:
+            self.logger.setLevel(logging.CRITICAL)
 
         self.index_distance_metric: str = index_distance_metric
         self.embedding_col: str = "RecipeIngredientParts"
@@ -61,37 +71,34 @@ class FeatureGenerationRecommender(RecommenderSystem):
         transformer_model: str = "all-MiniLM-L12-v2"
         self.bert_encoder: SentenceTransformer = SentenceTransformer(transformer_model)
 
-        if self.verbose:
-            logging.basicConfig(
-                format="%(levelname)s - %(asctime)s: %(message)s",
-                datefmt="%H:%M:%S",
-                level=logging.INFO,
-            )
-
         # map inputs to object attribute
-        self.disk_data: Dict[str, str] = {
+        self.disk_data: Dict[str, Path] = {
             "embeddings": embeddings_path,
             "classifiers": classifiers_path,
             "labelled_data": labelled_dataset_path,
             "index": index_path,
         }
 
+        # check any provided filepaths exist
+        for filepath in self.disk_data.values:
+
+            if filepath is not None:
+
+                check_file_exists(filepath)
+
         # if no ingredient embeddings are given, make them
         if self.disk_data["embeddings"] is None:
 
-            if verbose:
-                logging.info("Generating embeddings for the recipe dataset.")
+            self.logger.info("Generating embeddings for the recipe dataset.")
             # generate embeddings for ingredients
-            self.disk_data["embeddings"]: str = self.generate_embeddings()
+            self.disk_data["embeddings"] = self.generate_embeddings()
 
-            if verbose:
-                logging.info(
-                    f"Generated recipe embeddings at {self.disk_data['embeddings']}"
-                )
+            self.logger.info(
+                f"Generated recipe embeddings at {self.disk_data['embeddings']}"
+            )
         else:
 
-            if verbose:
-                logging.info("Loading recipe embeddings from disk.")
+            self.logger.info("Loading recipe embeddings from disk.")
             # load embeddings?
             with open(self.disk_data["embeddings"], "rb") as f:
 
@@ -101,35 +108,29 @@ class FeatureGenerationRecommender(RecommenderSystem):
         if self.disk_data["classifiers"] is None:
 
             # train classifiers
-            if verbose:
-                logging.info("Training classifiers.")
-            self.disk_data["classifiers"]: str = self.train_classifiers()
+            self.logger.logging.info("Training classifiers.")
+            self.disk_data["classifiers"] = self.train_classifiers()
 
-            if verbose:
-                logging.info(f"Saved classifiers to {self.disk_data['classifiers']}")
+            self.logger.info(f"Saved classifiers to {self.disk_data['classifiers']}")
         else:
 
-            if verbose:
-                logging.info("Loading pre-trained classifiers.")
+            self.logger.info("Loading pre-trained classifiers.")
             # load classifiers
             with open(classifiers_path, "rb") as f:
                 self.classifiers: Dict[str, RandomForestClassifier] = pickle.load(f)
 
         if labelled_dataset_path is None:
 
-            if verbose:
-                logging.info("Labelling dataset with classifiers.")
+            self.logger.info("Labelling dataset with classifiers.")
             # label the dataset
-            self.disk_data["labelled_data"]: str = self.label_dataset()
+            self.disk_data["labelled_data"] = self.label_dataset()
 
-            if verbose:
-                logging.info(
-                    f"Labelled dataset and saved to disk at {self.disk_data['labelled_data']}"
-                )
+            self.logger.info(
+                f"Labelled dataset and saved to disk at {self.disk_data['labelled_data']}"
+            )
         else:
 
-            if verbose:
-                logging.info("Loading pre-labelled dataset.")
+            self.logger.info("Loading pre-labelled dataset.")
             # load dataset
             self.labelled_dataset: pd.DataFrame = pd.read_csv(
                 labelled_dataset_path, index_col=0
@@ -137,8 +138,8 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         if index_path is None:
             np_dataset: np.ndarray = self.labelled_dataset.to_numpy()
-            out_path: str = (
-                f"./recipe_rec/data/feature_generation_{self.execution_id}.ann"
+            out_path: Path = Path(
+                self.output_dir, f"feature_generation_{self.execution_id}.ann"
             )
 
             # build an index
@@ -149,31 +150,31 @@ class FeatureGenerationRecommender(RecommenderSystem):
                 recipe_index=True,
                 save=True,
             )
-            if verbose:
-                logging.info(f"Built index at {self.disk_data['index']}")
+            self.logger.info(f"Built index at {self.disk_data['index']}")
         else:
 
             # load the index
-            if verbose:
-                logging.info("Loading index from disk.")
+            self.logger.info("Loading index from disk.")
 
             self.load_index(index_path)
 
-    def generate_embeddings(self) -> str:
+    def generate_embeddings(self) -> Path:
 
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.bert_encoder.encode(
             recipes[self.embedding_col].values
         )
 
-        embeddings_path: str = f"./data/sbert_recipe_embeddings{self.execution_id}.pkl"
+        embeddings_path: Path = Path(
+            self.output_dir, f"sbert_recipe_embeddings{self.execution_id}.pkl"
+        )
         with open(embeddings_path, "wb") as f:
 
             pickle.dump(self.ingredient_embeddings, f)
 
         return embeddings_path
 
-    def train_classifiers(self) -> str:
+    def train_classifiers(self) -> Path:
 
         # import labelled dataset
         labelled_df: pd.DataFrame = pd.read_csv(
@@ -206,8 +207,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
             "recall": [],
         }
 
-        if self.verbose:
-            logging.info("About to begin training.")
+        self.logger.info("About to begin training.")
 
         self.classifiers: Dict[str, RandomForestClassifier] = {}
 
@@ -251,11 +251,10 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         self.training_metrics: pd.DataFrame = pd.DataFrame(metrics)
 
-        if self.verbose:
-            logging.info("Clasifiers trained.")
+        self.logger.info("Clasifiers trained.")
 
-        classifier_out_path: str = (
-            f"./recipe_rec/data/trained_classifiers_{self.execution_id}.pkl"
+        classifier_out_path: Path = Path(
+            self.ouput_dir, f"trained_classifiers_{self.execution_id}.pkl"
         )
         with open(classifier_out_path, "wb") as f:
 
@@ -265,8 +264,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
     def label_dataset(self) -> None:
 
-        if self.verbose:
-            logging.info("Predicting labels for food attributes.")
+        self.logger.info("Predicting labels for food attributes.")
 
         for col in tqdm(self.labelled_cols):
 
@@ -274,8 +272,8 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         self.labelled_dataset: pd.DataFrame = recipes[self.labelled_cols]
 
-        labelled_path_out: str = (
-            f"./recipe_rec/data/labelled_dataset_{self.execution_id}.csv"
+        labelled_path_out: Path = Path(
+            self.output_dir, f"labelled_dataset_{self.execution_id}.csv"
         )
         self.labelled_dataset.to_csv(labelled_path_out)
 

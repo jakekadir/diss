@@ -1,10 +1,14 @@
+import logging
 from typing import Dict, List
 
 import pandas as pd
 
-from recipe_rec.data_loader import get_recipes
+from recipe_rec.utilities import get_recipes
 
 RANDOM_STATE: int = 42
+
+logging.basicConfig(level=logging.INFO)
+
 recipes: pd.DataFrame = get_recipes("./data/recipes.csv")
 
 ingredient_indexes: Dict[str, int] = {}

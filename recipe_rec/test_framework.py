@@ -1,15 +1,20 @@
+import logging
 from typing import Dict
 
 import pandas as pd
+import tqdm
 
 from recipe_rec import RANDOM_STATE, recipes
 from recipe_rec.recommender_system import RecommenderSystem
+
+logger = logging.getLogger(__name__)
 
 
 def generate_test_data(
     rec_systems: Dict[str, RecommenderSystem],
     n_recipes: int,
     n_recommendations: int,
+    verbose: bool = False,
 ) -> pd.DataFrame:
     # to store evaluation data
     evaluation_data = pd.DataFrame(
@@ -26,11 +31,20 @@ def generate_test_data(
         }
     )
 
+    if verbose:
+        logger.setLevel(logging.INFO)
+    else:
+        logger.setLevel(logging.CRITICAL)
+
+    logger.info("Choosing sample of recipes to act as recommendation queries.")
+
     # choose a sample of recipes to get recommendations for, fix across all systems
     sample: pd.DataFrame = recipes.sample(n=n_recipes, random_state=RANDOM_STATE)
 
     # for each recommender
-    for system in rec_systems:
+    for system in (pbar := tqdm(rec_systems, disable=not verbose)):
+        if verbose:
+            pbar.set_description(f"Generating recommendations using {system} system.")
 
         for recipe_index in sample.index:
 
