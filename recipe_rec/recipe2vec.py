@@ -13,11 +13,27 @@ from recipe_rec.utilities import check_file_exists, check_is_dir
 
 
 class Recipe2Vec(RecommenderSystem):
+    """
+    Builds a recommender system using the Word2Vec language model, training the model and calculating recipe embeddings which
+    are stored in an `AnnoyIndex`.
+
+    Parameters:
+        - `index_path: Path = None` (optional): the path to a pre-built AnnoyIndex.
+        - `model_path: Path = None`: the path to a pre-trained model.
+        - `num_epochs: int = 30`: the number of epochs to use in training.
+        - `alpha: float = 0.025`: the learning rate to use in training.
+        - `vec_size: int = 100`: the size of the model's embeddings.
+        - `index_distance_metric: str = "manhattan"`: the distance metric to use when building the `AnnoyIndex`.
+        - `output_dir: Path = pathlib.Path(".")`: the base directory to use when saving files.
+        - `verbose: bool`: outputs updates during training if True, outputs nothing otherwise.
+
+    """
+
     @build_timer
     def __init__(
         self,
-        index_path: str = None,
-        model_path: str = None,
+        index_path: Path = None,
+        model_path: Path = None,
         num_epochs: int = 30,
         alpha: float = 0.025,
         vec_size: int = 100,
@@ -86,7 +102,6 @@ class Recipe2Vec(RecommenderSystem):
                 num_trees=10,
                 out_path=out_path,
                 recipe_index=True,
-                save=True,
             )
             self.disk_data["index"] = out_path
 
@@ -100,6 +115,12 @@ class Recipe2Vec(RecommenderSystem):
             self.load_index(self.disk_data["index"])
 
     def train_model(self) -> Path:
+        """
+        Trains the Word2Vec model on the recipe corpus.
+
+        Returns:
+            - `pathlib.Path`: the path to the model's binary file written on disk.
+        """
 
         self.training_losses: List[float] = []
 
@@ -139,6 +160,12 @@ class Recipe2Vec(RecommenderSystem):
     def recipe_vectorizer(self, recipe: List[str]) -> np.array:
         """
         Maps a list of ingredients in a recipe to the average of each ingredient's embedding vector.
+
+        Parameters:
+            - `recipe: List[str]`: a list of ingredient tokens which comprise the recipe.
+
+        Returns:
+            - `np.array`: the recipe's embedding.
         """
 
         ingredient_vecs: np.array = np.array(
@@ -153,13 +180,22 @@ class Recipe2Vec(RecommenderSystem):
 class get_loss_callback(CallbackAny2Vec):
     """
     Gets training loss after each epoch and logs the current epoch number.
+
+    Parameters:
+        - `rec_system: Recipe2Vec`: instance of Recipe2Vec to store training losses in.
     """
 
     def __init__(self, rec_system: Recipe2Vec):
         self.epoch: int = 1
         self.rec_system: Recipe2Vec = rec_system
 
-    def on_epoch_end(self, model):
+    def on_epoch_end(self, model: Word2Vec):
+        """
+        Gets training losses at the end of an epoch.
+
+        Parameters:
+            - `model: Word2Vec`: the Word2Vec model being trained.
+        """
 
         self.rec_system.training_losses.append(model.get_latest_training_loss())
 

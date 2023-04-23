@@ -16,6 +16,18 @@ def generate_test_data(
     n_recommendations: int,
     verbose: bool = False,
 ) -> pd.DataFrame:
+    """
+    Generates test data for a given dictionary of recommender systems.
+
+    Parameters:
+        - `rec_systems: Dict[str, RecommenderSystem]`: a dictionary of recommender systems (values) and string labels (keys).
+        - `n_recipes: int`: the number of base recipes to sample.
+        - `n_recommendations: int`: the number of recommendations to retrieve for each recipe.
+        - `verbose: bool = False`:
+    Returns:
+        - `pd.DataFrame`: a DataFrame of the sampled recipes and the recommendations made by each recommender system.
+
+    """
     # to store evaluation data
     evaluation_data = pd.DataFrame(
         {

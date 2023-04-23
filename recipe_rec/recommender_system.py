@@ -54,7 +54,7 @@ def rec_timer(f):
 
 class RecommenderSystem:
     """
-    A base class for recommender systems that recommend using ingredients.
+    A base class for recipe recommender systems.
     """
 
     def __init__(self) -> None:
@@ -68,6 +68,14 @@ class RecommenderSystem:
         self.rec_times: Dict[str, Union[List[int], float]] = {"times": [], "avg": 0.0}
 
     def build_ingredient_index(self, num_trees: int, out_path: Path) -> None:
+        """
+        Builds an `AnnoyIndex` of ingredients, allowing for easy ingredient recommendation.
+
+        Parameters:
+            - `num_trees: int`: the number of trees to use when building the `AnnoyIndex`.
+            - `out_path: pathlib.Path`: the filepath to write the `AnnoyIndex` to.
+
+        """
 
         ingredient_embeddings: List[np.array] = []
         # get vectors for each ingredient using recipe vectorizer
@@ -91,6 +99,17 @@ class RecommenderSystem:
         out_path: Union[Path, None],
         recipe_index: bool = True,
     ) -> None:
+        """
+        Builds an `AnnoyIndex`, populating it using an iterable of vectors. The index of each vector in the iterable is used
+        as its index in the index. The resulting index is written to disk if `out_path` is not `None`.
+
+        Parameters:
+            - `iterable: Iterable`: an iterable containing vectors to write into the `AnnoyIndex`.
+            - `num_trees: int`: the number of trees to use when constructing the `AnnoyIndex`.
+            - `out_path: Union[Path, None]`: the filepath to write the `AnnoyIndex` to. If `None`, the index is not written to disk.
+            - `recipe_index: bool = True`: if `True`, the index is set as the class' `recipe_index` attribute. Otherwise, the index is an
+        ingredient index and is set as the class' `ingredient_index` attribute`.
+        """
 
         # create index using class attributes
         index: AnnoyIndex = AnnoyIndex(self.vec_size, self.index_distance_metric)
@@ -114,12 +133,25 @@ class RecommenderSystem:
         else:
             self.ingredient_index: AnnoyIndex = index
 
-    def load_index(self, index_path: Path) -> None:
+    def load_index(self, index_path: Path, recipe_index: bool = True) -> None:
+        """
+        Loads an `AnnoyIndex` from disk and sets it as the appropriate class attribute.
+
+        Parameters:
+            - `index_path: pathlib.Path`: the path to load the `AnnoyIndex` from.
+            - `recipe_index: bool = True`: if True, the index is stored at the `recipe_index` of the class. Otherwise, the index is
+        stored at the `ingredient_index` attribute.
+        """
 
         index_path_str = index_path.absolute().as_posix()
 
-        self.index: AnnoyIndex = AnnoyIndex(self.vec_size, self.index_distance_metric)
-        self.index.load(index_path_str)
+        index: AnnoyIndex = AnnoyIndex(self.vec_size, self.index_distance_metric)
+        index.load(index_path_str)
+
+        if recipe_index:
+            self.recipe_index = index
+        else:
+            self.ingredient_index = index
 
     @rec_timer
     def get_recommendations(
@@ -131,13 +163,15 @@ class RecommenderSystem:
     ) -> Union[pd.DataFrame, List[str]]:
         """
         Creates a recipe vector from a list of ingredients and queries the Annoy index for the `n_recommendations` nearest neighbours.
+        Raises a `KeyError` if the recipe cannot be vectorized.
 
-        Inputs:
-            - `recipe`: `List[str]`, a list of string ingredients
-            - `n_recommendations`: `int`, the number of recommendations to return
-            - `get_recipes` : `bool`: if True, recommends recipes; if False, reccommends ingredients
-        Outputs:
-            - `pd.DataFrame`, a sorted DataFrame of the recommended recipes
+        Parameters
+            - `recipe`: `List[str]`: a list of string ingredients
+            - `n_recommendations`: `int = 10`: the number of recommendations to return
+            - `search_id: int = None`: the index of the querying recipe. If not `None`, this recipe will not be returned as a recommendation.
+            - `get_recipes: bool = True`: if True, recommends recipes; if False, reccommends ingredients
+        Returns:
+            - `Union[pd.DataFrame, List[str]`, a sorted DataFrame of the recommended recipes, or a list of recommended ingredients.
         """
 
         try:
@@ -184,13 +218,3 @@ class RecommenderSystem:
             raise ValueError(
                 "One of the given ingredients did not exist in the training dataset."
             )
-
-    def timer(self, func) -> None:
-
-        start: int = time.time_ns()
-
-        func()
-
-        end: int = time.time_ns()
-
-        self.build_time: int = end - start

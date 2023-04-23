@@ -8,6 +8,11 @@ from recipe_rec.recommender_system import RecommenderSystem, build_timer, rec_ti
 
 
 class SimpleSearch(RecommenderSystem):
+    """
+    A baseline recommender systems that identifies recommendations by finding recipes with the highest number of matching
+    ingredients to the list of query ingredients.
+    """
+
     @build_timer
     def __init__(self) -> None:
 
@@ -18,6 +23,16 @@ class SimpleSearch(RecommenderSystem):
     def get_recommendations(
         self, recipe: List[str], n_recommendations: int = 10, search_id: int = None
     ) -> pd.DataFrame:
+        """
+        Searches the `recipes` DataFrame for recipes with the highest number of ingredients that match a given query.
+
+        Parameters
+            - `recipe`: `List[str]`: a list of string ingredients
+            - `n_recommendations`: `int = 10`: the number of recommendations to return
+            - `search_id: int = None`: the index of the querying recipe. If not `None`, this recipe will not be returned as a recommendation.
+        Returns:
+            - `Union[pd.DataFrame, List[str]`, a sorted DataFrame of the recommended recipes, or a list of recommended ingredients.
+        """
 
         # count length of the intersection of the set of the query ingredients and set of recipe ingredients
         counts: pd.Series = recipes["RecipeIngredientParts"].apply(

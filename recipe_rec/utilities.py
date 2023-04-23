@@ -47,7 +47,7 @@ def check_file_exists(path: Path) -> Path:
         return path
 
     else:
-        raise ValueError(f"No file exists at the given path, {path}")
+        raise ValueError(f"No file exists at the given path {path}")
 
 
 def get_recipes(path: Path) -> pd.DataFrame:

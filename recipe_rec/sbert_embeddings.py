@@ -13,6 +13,18 @@ from recipe_rec.utilities import check_file_exists, check_is_dir
 
 
 class SBERTRecommender(RecommenderSystem):
+    """
+    A recommender system using pre-trained SBERT embeddings. Generates embeddings for a string of each recipe's ingredients before placing
+    the embeddings into an `AnnoyIndex`.
+
+    Parameters:
+        - `embeddings_path: pathlib.Path = None` (optional): the path of pre-generated SBERT embeddings.
+        - `index_path: Path = None` (optional): the path of a pre-built `AnnoyIndex`.
+        - `index_distance_metric: str = "manhattan"` (optional): the distance metric to use when building the `AnnoyIndex`.
+        - `output_dir: pathlib.Path = pathlib.Path(".")` (optional): the base directory to use when writing files to disk.
+        - `verbose: bool = True` (optional): outputs updates during training if True, outputs nothing otherwise.
+    """
+
     @build_timer
     def __init__(
         self,
@@ -89,7 +101,13 @@ class SBERTRecommender(RecommenderSystem):
 
     def recipe_vectorizer(self, recipe: List[str]) -> np.ndarray:
         """
-        Maps a list of ingredients to a vector.
+        Maps a list of ingredients in a recipe to the SBERT embedding of the concatenated string of these ingredients.
+
+        Parameters:
+        `recipe: List[str]`: a list of ingredient tokens which comprise the recipe.
+
+        Returns:
+        `np.array`: the recipe's embedding.
         """
 
         # combine ingredients into a string
@@ -103,6 +121,13 @@ class SBERTRecommender(RecommenderSystem):
         return recipe_vec
 
     def generate_embeddings(self) -> Path:
+        """
+        Generates SBERT embeddings for the entire recipe dataset, stored at the `ingredient_embeddings` attribute of the class.
+
+        Returns:
+            - `pathlib.Path`: the path to which the generated embeddings are written.
+
+        """
 
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.model.encode(

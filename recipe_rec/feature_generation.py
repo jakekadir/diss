@@ -19,16 +19,33 @@ RANDOM_STATE = 42
 
 
 class FeatureGenerationRecommender(RecommenderSystem):
+    """
+    Builds a recommender system using a manually-labelled dataset of new features, training
+    classifiers to predict these features using SBERT embeddings of the recipes' ingredients.
+
+    These new features are used to create a recipe embedding space from which recommendations can be made.
+
+    Parameters:
+    - `embeddings_path: pathlib.Path = None` (optional): a path to a binary file of pre-calculated SBERT embeddings for the entire recipe dataset.
+    - `classifiers_path: pathlib.Path = None` (optional): a path to a binary file of pre-trained classifiers.
+    - `prelabelled_dataset_path: pathlib.Path = None`: a path to the pre-labelled dataset.
+    - `index_path: pathlib.Path = None` (optional): a path to a pre-built AnnoyIndex.
+    - `index_distance_metric: str = "manhattan"` (optional): the distance metric to use when building an AnnoyIndex
+    - `output_dir: pathlib.Path = pathlib.Path(".")` (optional): the base path to write all files to.
+    - `verbose: bool = False`: outputs updates during training if True, outputs nothing otherwise.
+    """
+
     @build_timer
     def __init__(
         self,
         embeddings_path: Path = None,
         classifiers_path: Path = None,
+        prelabelled_dataset_path: Path = None,
         labelled_dataset_path: Path = None,
         index_path: Path = None,
         index_distance_metric: str = "manhattan",
         output_dir: Path = Path("."),
-        verbose: bool = True,
+        verbose: bool = False,
     ) -> None:
 
         super().__init__()
@@ -75,6 +92,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
         self.disk_data: Dict[str, Path] = {
             "embeddings": embeddings_path,
             "classifiers": classifiers_path,
+            "prelabelled_data": check_file_exists(prelabelled_dataset_path),
             "labelled_data": labelled_dataset_path,
             "index": index_path,
         }
@@ -159,6 +177,12 @@ class FeatureGenerationRecommender(RecommenderSystem):
             self.load_index(index_path)
 
     def generate_embeddings(self) -> Path:
+        """
+        Generates SBERT embeddings for the string list of each recipe's ingredients, writing to a pickle file.
+
+        Returns:
+        `pathlib.Path`: the path to the pickle file containing the recipe embeddings.
+        """
 
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.bert_encoder.encode(
@@ -175,10 +199,16 @@ class FeatureGenerationRecommender(RecommenderSystem):
         return embeddings_path
 
     def train_classifiers(self) -> Path:
+        """
+        Trains classifiers for each manually-labelled feature and saves the fitted models to a binary file.
+
+        Returns:
+        `pathlib.Path`: the path to the saved fitted models.
+        """
 
         # import labelled dataset
         labelled_df: pd.DataFrame = pd.read_csv(
-            "./feature_generation/trimmed_labelled_slim.csv", nrows=300
+            self.disk_data["prelabelled_data"], nrows=300
         )
 
         # remove double quotes from ingredient string
@@ -262,7 +292,13 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         return classifier_out_path
 
-    def label_dataset(self) -> None:
+    def label_dataset(self) -> Path:
+        """
+        Predicts labels for the entire dataset using the fitted classifiers.
+
+        Returns:
+        `pathlib.Path`: the path to the fully-labelled dataset.
+        """
 
         self.logger.info("Predicting labels for food attributes.")
 
@@ -279,7 +315,15 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         return labelled_path_out
 
-    def recipe_vectorizer(self, ingredients: List[str]):
+    def recipe_vectorizer(self, ingredients: List[str]) -> np.array:
+        """
+        Generates an SBERT embedding for the given ingredients and predicts features using pre-trained classifiers.
+
+        Parameters:
+        `ingredients: List[str]`: a list of ingredients to use in producing the embedding.
+        Returns:
+        `np.array`: the embedding for the given recipe.
+        """
 
         ingredient_str: str = ",".join(ingredients)
 
