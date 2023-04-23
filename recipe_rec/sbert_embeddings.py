@@ -4,7 +4,7 @@ from pathlib import Path
 from typing import Dict, List
 
 import numpy as np
-from annoy import AnnoyIndex
+import pandas as pd
 from sentence_transformers import SentenceTransformer
 
 from recipe_rec import recipes
@@ -128,10 +128,11 @@ class SBERTRecommender(RecommenderSystem):
             - `pathlib.Path`: the path to which the generated embeddings are written.
 
         """
-
+        concatenated_ingredients: pd.Series = recipes[self.embedding_col].str.join(" ")
+        
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.model.encode(
-            recipes[self.embedding_col].values, show_progress_bar=self.verbose
+            concatenated_ingredients, show_progress_bar=self.verbose
         )
 
         embeddings_path: Path = Path(

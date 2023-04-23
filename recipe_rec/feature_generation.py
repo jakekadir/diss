@@ -184,9 +184,12 @@ class FeatureGenerationRecommender(RecommenderSystem):
         `pathlib.Path`: the path to the pickle file containing the recipe embeddings.
         """
 
+        # combine ingredients into a single string separted by spaces
+        concatenated_ingredients: pd.Series = recipes[self.embedding_col].str.join(" ")
+        
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.bert_encoder.encode(
-            recipes[self.embedding_col].values
+            concatenated_ingredients
         )
 
         embeddings_path: Path = Path(
