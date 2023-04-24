@@ -129,7 +129,7 @@ class SBERTRecommender(RecommenderSystem):
 
         """
         concatenated_ingredients: pd.Series = recipes[self.embedding_col].str.join(" ")
-        
+
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.model.encode(
             concatenated_ingredients, show_progress_bar=self.verbose

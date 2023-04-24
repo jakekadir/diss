@@ -186,7 +186,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         # combine ingredients into a single string separted by spaces
         concatenated_ingredients: pd.Series = recipes[self.embedding_col].str.join(" ")
-        
+
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.bert_encoder.encode(
             concatenated_ingredients
