@@ -7,7 +7,7 @@ import pandas as pd
 from gensim.models import Word2Vec
 from gensim.models.callbacks import CallbackAny2Vec
 
-from recipe_rec import recipes
+from recipe_rec.data import recipes
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
 from recipe_rec.utilities import check_file_exists, check_is_dir
 

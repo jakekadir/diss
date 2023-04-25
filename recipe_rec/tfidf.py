@@ -9,8 +9,8 @@ from scipy.sparse._csr import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.neighbors import NearestNeighbors
 
-from recipe_rec import recipes
-from recipe_rec.recommender_system import RecommenderSystem, build_timer
+from recipe_rec.data import recipes
+from recipe_rec.recommender_system import RecommenderSystem, build_timer, rec_timer
 from recipe_rec.utilities import check_file_exists, check_is_dir
 
 
@@ -30,6 +30,7 @@ class TfIdfRecommender(RecommenderSystem):
     def __init__(
         self,
         vectorizer_path: Path = None,
+        model_path: Path = None,
         output_dir: Path = Path("."),
         verbose: bool = False,
     ) -> None:
@@ -39,14 +40,15 @@ class TfIdfRecommender(RecommenderSystem):
         # constants
         self.output_dir: Path = check_is_dir(output_dir)
         self.verbose: bool = verbose
-
+        
         self.logger = logging.getLogger(__name__)
         if self.verbose:
             self.logger.setLevel(logging.INFO)
         else:
             self.logger.setLevel(logging.CRITICAL)
 
-        self.disk_data: Dict[str, Path] = {"vectorizer_path": vectorizer_path}
+        self.disk_data: Dict[str, Path] = {"vectorizer_path": vectorizer_path,
+                                           "model_path" : model_path}
         # validate provided file paths before trying to do anything
         for filepath in self.disk_data.values():
             if filepath is not None:
@@ -69,7 +71,7 @@ class TfIdfRecommender(RecommenderSystem):
                 self.tfidf_vectorizer = pickle.load(f)
 
         if self.disk_data["model_path"] is None:
-
+            
             self.build_nearest_neighbors()
 
         else:
@@ -95,9 +97,9 @@ class TfIdfRecommender(RecommenderSystem):
         joined_ingredients: str = ",".join(recipe)
 
         # retrieve BERT vector for string
-        recipe_vec: csr_matrix = self.tfidf_vectorizer.transform(joined_ingredients)
+        recipe_vec: csr_matrix = self.tfidf_vectorizer.transform([joined_ingredients])
 
-        recipe_vec = np.array(recipe_vec)
+        recipe_vec = recipe_vec.toarray()
 
         return recipe_vec
 
@@ -129,12 +131,12 @@ class TfIdfRecommender(RecommenderSystem):
         return vectorizer_path
 
     def build_nearest_neighbors(self) -> Path:
-
+        
         self.model = NearestNeighbors(n_neighbors=10)
         self.model.fit(self.ingredient_vectors)
 
         model_path: Path = Path(
-            self.ouput_dir, f"nearest_neighbours_{self.execution_id}.pkl"
+            self.output_dir, f"nearest_neighbours_{self.execution_id}.pkl"
         )
 
         with open(model_path, "wb") as f:
@@ -143,9 +145,10 @@ class TfIdfRecommender(RecommenderSystem):
 
         return model_path
 
+    @rec_timer
     def get_recommendations(
         self, recipe: List[str], n_recommendations: int = 10, search_id: int = None
-    ) -> pd.DataFrame | List[str]:
+    ) -> pd.DataFrame:
         """
         Creates a recipe vector from a list of ingredients and performs a nearest neighbor search using scikit-learn `n_recommendations` nearest neighbours.
         Raises a `KeyError` if the recipe cannot be vectorized.
@@ -162,7 +165,10 @@ class TfIdfRecommender(RecommenderSystem):
 
         _, rec_indexes = self.model.kneighbors(
             recipe_vec, n_neighbors=n_recommendations
-        )[0]
+        )
+        
+        # get the first row of recommendations
+        rec_indexes = rec_indexes[0]
 
         # if there is a search id
         if search_id is not None:
@@ -171,9 +177,10 @@ class TfIdfRecommender(RecommenderSystem):
             if search_id in rec_indexes:
 
                 # get another recommenation (shouldn't be the same one again)
-                rec_indexes = self.model.kneighbors(
+                _, rec_indexes = self.model.kneighbors(
                     recipe_vec, n_neighbors=n_recommendations + 1
-                )[0]
+                )
+                rec_indexes = rec_indexes[0]
 
                 # filter out the search query
                 rec_indexes = [rec for rec in rec_indexes if rec != search_id]

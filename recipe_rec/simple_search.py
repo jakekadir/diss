@@ -3,7 +3,7 @@ from typing import List, NoReturn
 
 import pandas as pd
 
-from recipe_rec import recipes
+from recipe_rec.data import recipes
 from recipe_rec.recommender_system import RecommenderSystem, build_timer, rec_timer
 
 

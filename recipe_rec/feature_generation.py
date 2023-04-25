@@ -11,7 +11,7 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from tqdm import tqdm
 
-from recipe_rec import recipes
+from recipe_rec.data import recipes
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
 from recipe_rec.utilities import check_file_exists, check_is_dir
 

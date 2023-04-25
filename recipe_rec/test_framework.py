@@ -4,7 +4,8 @@ from typing import Dict
 import pandas as pd
 import tqdm
 
-from recipe_rec import RANDOM_STATE, recipes
+from recipe_rec import RANDOM_STATE
+from recipe_rec.utilities import recipes
 from recipe_rec.recommender_system import RecommenderSystem
 
 logger = logging.getLogger(__name__)

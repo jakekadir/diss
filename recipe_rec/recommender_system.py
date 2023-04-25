@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 from annoy import AnnoyIndex
 
-from recipe_rec import recipes, unique_ingredients
+from recipe_rec.data import recipes, unique_ingredients
 
 
 def build_timer(f):
