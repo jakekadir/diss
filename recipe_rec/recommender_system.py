@@ -7,7 +7,8 @@ import numpy as np
 import pandas as pd
 from annoy import AnnoyIndex
 
-from recipe_rec.data import recipes, unique_ingredients
+from recipe_rec.data import store
+from recipe_rec.utilities import get_dataset
 
 
 def build_timer(f):
@@ -57,8 +58,13 @@ class RecommenderSystem:
     A base class for recipe recommender systems.
     """
 
+    # recipes = store["recipes"]
+    # unique_ingredients = store["unique_ingredients"]
+
     def __init__(self) -> None:
+
         # common attributes among all systems
+        self.recipes = get_dataset()
 
         # unique ID for the class' instantiation
         self.execution_id: str = str(uuid.uuid4().hex)
@@ -79,7 +85,7 @@ class RecommenderSystem:
 
         ingredient_embeddings: List[np.array] = []
         # get vectors for each ingredient using recipe vectorizer
-        for ingredient in unique_ingredients:
+        for ingredient in self.unique_ingredients:
 
             ingredient_embed: np.array = self.recipe_vectorizer([ingredient])
 
@@ -181,7 +187,7 @@ class RecommenderSystem:
 
             if get_recipes:
                 # get closest vectors from the dataset
-                rec_indexes: List[int] = self.index.get_nns_by_vector(
+                rec_indexes: List[int] = self.recipe_index.get_nns_by_vector(
                     recipe_vec, n_recommendations
                 )
 
@@ -197,20 +203,25 @@ class RecommenderSystem:
                 # if the search is in the results
                 if search_id in rec_indexes:
 
-                    # get another recommenation (shouldn't be the same one again)
-                    rec_indexes = self.index.get_nns_by_vector(
-                        recipe_vec, n_recommendations + 1
-                    )
-
+                    if get_recipes:
+                        # get another recommenation (shouldn't be the same one again)
+                        rec_indexes = self.recipe_index.get_nns_by_vector(
+                            recipe_vec, n_recommendations + 1
+                        )
+                    else:
+                        # get another recommenation (shouldn't be the same one again)
+                        rec_indexes = self.ingredient_index.get_nns_by_vector(
+                            recipe_vec, n_recommendations + 1
+                        )
                     # filter out the search query
                     rec_indexes = [rec for rec in rec_indexes if rec != search_id]
 
             if get_recipes:
                 # map recommendations to recipes
-                recs: pd.DataFrame = recipes.iloc[rec_indexes].copy()
+                recs: pd.DataFrame = self.recipes.iloc[rec_indexes].copy()
             else:
                 # map recommendations to ingredients
-                recs: List[str] = [unique_ingredients[i] for i in rec_indexes]
+                recs: List[str] = [self.unique_ingredients[i] for i in rec_indexes]
 
             return recs
 

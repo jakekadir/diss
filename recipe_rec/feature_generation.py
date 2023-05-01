@@ -11,11 +11,10 @@ from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_sc
 from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from tqdm import tqdm
 
-from recipe_rec.data import recipes
+from recipe_rec import RANDOM_STATE
+from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
-from recipe_rec.utilities import check_file_exists, check_is_dir
-
-RANDOM_STATE = 42
+from recipe_rec.utilities import check_dataset_loaded, check_file_exists, check_is_dir
 
 
 class FeatureGenerationRecommender(RecommenderSystem):
@@ -98,7 +97,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
         }
 
         # check any provided filepaths exist
-        for filepath in self.disk_data.values:
+        for filepath in self.disk_data.values():
 
             if filepath is not None:
 
@@ -162,11 +161,7 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
             # build an index
             self.disk_data["index"]: str = self.build_index(
-                iterable=np_dataset,
-                num_trees=10,
-                out_path=out_path,
-                recipe_index=True,
-                save=True,
+                iterable=np_dataset, num_trees=10, out_path=out_path, recipe_index=True
             )
             self.logger.info(f"Built index at {self.disk_data['index']}")
         else:
@@ -185,7 +180,9 @@ class FeatureGenerationRecommender(RecommenderSystem):
         """
 
         # combine ingredients into a single string separted by spaces
-        concatenated_ingredients: pd.Series = recipes[self.embedding_col].str.join(" ")
+        concatenated_ingredients: pd.Series = self.recipes[self.embedding_col].str.join(
+            " "
+        )
 
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.bert_encoder.encode(
@@ -307,9 +304,11 @@ class FeatureGenerationRecommender(RecommenderSystem):
 
         for col in tqdm(self.labelled_cols):
 
-            recipes[col] = self.classifiers[col].predict(self.ingredient_embeddings)
+            self.recipes[col] = self.classifiers[col].predict(
+                self.ingredient_embeddings
+            )
 
-        self.labelled_dataset: pd.DataFrame = recipes[self.labelled_cols]
+        self.labelled_dataset: pd.DataFrame = self.recipes[self.labelled_cols]
 
         labelled_path_out: Path = Path(
             self.output_dir, f"labelled_dataset_{self.execution_id}.csv"

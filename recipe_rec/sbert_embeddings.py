@@ -7,9 +7,9 @@ import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 
-from recipe_rec.data import recipes
+from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
-from recipe_rec.utilities import check_file_exists, check_is_dir
+from recipe_rec.utilities import check_dataset_loaded, check_file_exists, check_is_dir
 
 
 class SBERTRecommender(RecommenderSystem):
@@ -128,7 +128,9 @@ class SBERTRecommender(RecommenderSystem):
             - `pathlib.Path`: the path to which the generated embeddings are written.
 
         """
-        concatenated_ingredients: pd.Series = recipes[self.embedding_col].str.join(" ")
+        concatenated_ingredients: pd.Series = self.recipes[self.embedding_col].str.join(
+            " "
+        )
 
         # generate embeddings
         self.ingredient_embeddings: np.ndarray = self.model.encode(

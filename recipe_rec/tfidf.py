@@ -9,9 +9,14 @@ from scipy.sparse._csr import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.neighbors import NearestNeighbors
 
-from recipe_rec.data import recipes
+from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer, rec_timer
-from recipe_rec.utilities import check_file_exists, check_is_dir
+from recipe_rec.utilities import (
+    check_dataset_loaded,
+    check_file_exists,
+    check_is_dir,
+    space_replacer,
+)
 
 
 class TfIdfRecommender(RecommenderSystem):
@@ -40,24 +45,21 @@ class TfIdfRecommender(RecommenderSystem):
         # constants
         self.output_dir: Path = check_is_dir(output_dir)
         self.verbose: bool = verbose
-        
+
         self.logger = logging.getLogger(__name__)
         if self.verbose:
             self.logger.setLevel(logging.INFO)
         else:
             self.logger.setLevel(logging.CRITICAL)
 
-        self.disk_data: Dict[str, Path] = {"vectorizer_path": vectorizer_path,
-                                           "model_path" : model_path}
+        self.disk_data: Dict[str, Path] = {
+            "vectorizer_path": vectorizer_path,
+            "model_path": model_path,
+        }
         # validate provided file paths before trying to do anything
         for filepath in self.disk_data.values():
             if filepath is not None:
                 check_file_exists(filepath)
-
-        # replaces spaces in a list of strings with "_"; used in preprocessing
-        self.space_replacer = lambda recipe: [
-            ingredient.replace(" ", "_") for ingredient in recipe
-        ]
 
         # if no model
         if self.disk_data["vectorizer_path"] is None:
@@ -71,7 +73,7 @@ class TfIdfRecommender(RecommenderSystem):
                 self.tfidf_vectorizer = pickle.load(f)
 
         if self.disk_data["model_path"] is None:
-            
+
             self.build_nearest_neighbors()
 
         else:
@@ -91,12 +93,12 @@ class TfIdfRecommender(RecommenderSystem):
         """
 
         # replace spaces in the query
-        recipe = self.space_replacer(recipe)
+        recipe = space_replacer(recipe)
 
         # combine ingredients into a string
         joined_ingredients: str = ",".join(recipe)
 
-        # retrieve BERT vector for string
+        # retrieve TF-IDF vector for string
         recipe_vec: csr_matrix = self.tfidf_vectorizer.transform([joined_ingredients])
 
         recipe_vec = recipe_vec.toarray()
@@ -108,8 +110,8 @@ class TfIdfRecommender(RecommenderSystem):
         Generates TF-IDF vectors for the entire recipe dataset, stored at the `ingredient_vectors` attribute of the class.
         """
 
-        preprocessed_ingredients = recipes["RecipeIngredientParts"].apply(
-            self.space_replacer
+        preprocessed_ingredients = self.recipes["RecipeIngredientParts"].apply(
+            space_replacer
         )
         preprocessed_ingredients = preprocessed_ingredients.str.join(" ")
 
@@ -131,8 +133,8 @@ class TfIdfRecommender(RecommenderSystem):
         return vectorizer_path
 
     def build_nearest_neighbors(self) -> Path:
-        
-        self.model = NearestNeighbors(n_neighbors=10)
+
+        self.model = NearestNeighbors(n_neighbors=10, metric="manhattan")
         self.model.fit(self.ingredient_vectors)
 
         model_path: Path = Path(
@@ -166,7 +168,7 @@ class TfIdfRecommender(RecommenderSystem):
         _, rec_indexes = self.model.kneighbors(
             recipe_vec, n_neighbors=n_recommendations
         )
-        
+
         # get the first row of recommendations
         rec_indexes = rec_indexes[0]
 
@@ -186,6 +188,6 @@ class TfIdfRecommender(RecommenderSystem):
                 rec_indexes = [rec for rec in rec_indexes if rec != search_id]
 
         # map recommendations to recipes
-        recs: pd.DataFrame = recipes.iloc[rec_indexes].copy()
+        recs: pd.DataFrame = self.recipes.iloc[rec_indexes].copy()
 
         return recs

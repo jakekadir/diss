@@ -5,8 +5,11 @@ import pandas as pd
 import tqdm
 
 from recipe_rec import RANDOM_STATE
-from recipe_rec.utilities import recipes
 from recipe_rec.recommender_system import RecommenderSystem
+from recipe_rec.utilities import check_dataset_loaded, store
+
+check_dataset_loaded()
+recipes = store["recipes"]
 
 logger = logging.getLogger(__name__)
 

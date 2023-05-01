@@ -3,11 +3,12 @@ from typing import List, NoReturn
 
 import pandas as pd
 
-from recipe_rec.data import recipes
+from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer, rec_timer
+from recipe_rec.utilities import check_dataset_loaded
 
 
-class SimpleSearch(RecommenderSystem):
+class SimpleSearchRecommender(RecommenderSystem):
     """
     A baseline recommender systems that identifies recommendations by finding recipes with the highest number of matching
     ingredients to the list of query ingredients.
@@ -35,7 +36,7 @@ class SimpleSearch(RecommenderSystem):
         """
 
         # count length of the intersection of the set of the query ingredients and set of recipe ingredients
-        counts: pd.Series = recipes["RecipeIngredientParts"].apply(
+        counts: pd.Series = self.recipes["RecipeIngredientParts"].apply(
             lambda ingrs: len(set(ingrs).intersection(set(recipe)))
         )
 
@@ -57,7 +58,7 @@ class SimpleSearch(RecommenderSystem):
                 rec_indexes = [rec for rec in rec_indexes if rec != search_id]
 
         # get top n_recommendations
-        return recipes.iloc[rec_indexes].copy()
+        return self.recipes.iloc[rec_indexes].copy()
 
     # overwrite irrelevant methods
     def build_ingredient_index(self) -> NoReturn:
