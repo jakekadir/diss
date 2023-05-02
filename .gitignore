@@ -1,3 +1,15 @@
 /.venv/
+/.vscode/settings.json
 /data/
 /__pycache__/
+/resources/
+/temporary_files/
+**/*.model
+**/*.ann
+**/*.pkl
+**/*.pickle
+**/*.npy
+**/*.wordvectors
+**/*.csv
+**/*.txt
+**/*.pyc
