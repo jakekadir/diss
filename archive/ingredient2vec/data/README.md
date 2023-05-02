@@ -1,1 +1,0 @@
-Generates Word2Vec training data for the data at /data/recipes.csv

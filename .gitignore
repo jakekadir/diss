@@ -13,3 +13,5 @@
 **/*.csv
 **/*.txt
 **/*.pyc
+**/*.docx
+*.docx
