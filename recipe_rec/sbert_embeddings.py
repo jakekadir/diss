@@ -7,9 +7,8 @@ import numpy as np
 import pandas as pd
 from sentence_transformers import SentenceTransformer
 
-from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
-from recipe_rec.utilities import check_dataset_loaded, check_file_exists, check_is_dir
+from recipe_rec.utilities import check_file_exists, check_is_dir
 
 
 class SBERTRecommender(RecommenderSystem):
@@ -73,7 +72,7 @@ class SBERTRecommender(RecommenderSystem):
         else:
 
             self.logger.info("Loading recipe embeddings from disk.")
-            # load embeddings?
+            # load embeddings
             with open(self.disk_data["embeddings"], "rb") as f:
                 self.ingredient_embeddings: np.ndarray = pickle.load(f)
 

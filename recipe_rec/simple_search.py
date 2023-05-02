@@ -3,9 +3,7 @@ from typing import List, NoReturn
 
 import pandas as pd
 
-from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer, rec_timer
-from recipe_rec.utilities import check_dataset_loaded
 
 
 class SimpleSearchRecommender(RecommenderSystem):

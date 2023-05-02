@@ -1,5 +1,5 @@
 /.venv/
-/.vscode/
+/.vscode/settings.json
 /data/
 /__pycache__/
 /resources/
@@ -13,5 +13,3 @@
 **/*.csv
 **/*.txt
 **/*.pyc
-**/*.docx
-*.docx

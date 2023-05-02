@@ -7,9 +7,8 @@ import pandas as pd
 from gensim.models import Word2Vec
 from gensim.models.callbacks import CallbackAny2Vec
 
-from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
-from recipe_rec.utilities import check_dataset_loaded, check_file_exists, check_is_dir
+from recipe_rec.utilities import check_file_exists, check_is_dir
 
 
 class Recipe2Vec(RecommenderSystem):
@@ -127,7 +126,7 @@ class Recipe2Vec(RecommenderSystem):
 
         # temporarily change root logger level to hide excessive gensim outputs
         prev_log_level: int = logging.getLogger().getEffectiveLevel()
-        # logging.getLogger().setLevel(logging.WARNING)
+        logging.getLogger().setLevel(logging.WARNING)
 
         try:
             # create model
@@ -152,13 +151,16 @@ class Recipe2Vec(RecommenderSystem):
             )
             self.model.save(model_path)
 
+            # restore root logger back to normal level
+            logging.getLogger().setLevel(prev_log_level)
+
             return model_path
 
         except Exception as e:
             self.logger.warn(e)
-
-        # restore root logger back to normal level
-        # logging.getLogger().setLevel(prev_log_level)
+        finally:
+            # restore root logger back to normal level
+            logging.getLogger().setLevel(prev_log_level)
 
     def recipe_vectorizer(self, recipe: List[str]) -> np.array:
         """

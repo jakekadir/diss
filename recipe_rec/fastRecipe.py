@@ -69,11 +69,6 @@ class fastRecipeRecommender(RecommenderSystem):
 
                 check_file_exists(filepath)
 
-        # if self.disk_data["training_data_txt"] is None:
-
-        #     # generate train data
-        #     self.disk_data["training_data_txt"] = self.generate_train_data()
-
         # if there is training data, do nothing as only the path is needed for fastText
 
         if self.disk_data["model"] is None:
@@ -155,29 +150,21 @@ class fastRecipeRecommender(RecommenderSystem):
         num_epochs = 300
         min_count = 5
         num_neg_samples = 5
-        try:
 
-            # convert path to str; fastText can't take Path
-            # training_data_str: str = self.disk_data["training_data_txt"].absolute().as_posix()
+        try:
 
             ingredients: pd.Series = self.recipes["RecipeIngredientParts"].apply(
                 space_replacer
             )
 
             # create model
-            self.model: FastText = FastText(sentences=ingredients)
-
-            # self.model: fasttext._fastText  = fasttext.train_unsupervised(
-            #     input=training_data_str,
-            #     model="skipgram",
-            #     dim=self.vec_size,
-            #     ws=window_size,
-            #     epoch=num_epochs,
-            #     minCount=min_count,
-            #     neg=num_neg_samples,
-            #     loss="ns",  # negative sampling
-            #     verbose=self.verbose,
-            # )
+            self.model: FastText = FastText(
+                sentences=ingredients,
+                window=window_size,
+                epochs=num_epochs,
+                min_count=min_count,
+                num_neg_samples=num_neg_samples,
+            )
 
             # write to file
             model_path: Path = (
@@ -188,14 +175,16 @@ class fastRecipeRecommender(RecommenderSystem):
 
             self.model.save(model_path)
 
+            # restore root logger back to normal level
+            logging.getLogger().setLevel(prev_log_level)
+
             return model_path
 
         except Exception as e:
             raise e
-            self.logger.warn(e)
-
-        # restore root logger back to normal level
-        logging.getLogger().setLevel(prev_log_level)
+        finally:
+            # restore root logger back to normal level
+            logging.getLogger().setLevel(prev_log_level)
 
     def recipe_vectorizer(self, recipe: List[str]) -> np.array:
         """

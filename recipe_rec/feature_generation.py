@@ -12,9 +12,8 @@ from sklearn.model_selection import RandomizedSearchCV, train_test_split
 from tqdm import tqdm
 
 from recipe_rec import RANDOM_STATE
-from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer
-from recipe_rec.utilities import check_dataset_loaded, check_file_exists, check_is_dir
+from recipe_rec.utilities import check_file_exists, check_is_dir
 
 
 class FeatureGenerationRecommender(RecommenderSystem):

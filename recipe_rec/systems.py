@@ -1,4 +1,4 @@
-# bring all classes here to allow simpler imports
+# bring all classes together to allow simpler imports
 from .fastRecipe import fastRecipeRecommender
 from .feature_generation import FeatureGenerationRecommender
 from .recipe2vec import Recipe2Vec

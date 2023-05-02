@@ -61,6 +61,14 @@ def get_recipes(path: Path) -> pd.DataFrame:
 
 
 def load_and_set_data(path: Path, store=store):
+    """
+    Loads a dataset at a given path into a variable accessible throughout the module.
+
+    Parameters:
+        - `path: pathlib.Path`: a path to a dataset.
+        - `store` the variable into which the dataset is loaded.
+    """
+
     recipes: pd.DataFrame = get_recipes(path)
 
     ingredient_indexes: Dict[str, int] = {}

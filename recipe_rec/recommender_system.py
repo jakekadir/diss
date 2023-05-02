@@ -7,7 +7,6 @@ import numpy as np
 import pandas as pd
 from annoy import AnnoyIndex
 
-from recipe_rec.data import store
 from recipe_rec.utilities import get_dataset
 
 

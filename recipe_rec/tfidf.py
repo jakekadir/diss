@@ -9,14 +9,8 @@ from scipy.sparse._csr import csr_matrix
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.neighbors import NearestNeighbors
 
-from recipe_rec.data import store
 from recipe_rec.recommender_system import RecommenderSystem, build_timer, rec_timer
-from recipe_rec.utilities import (
-    check_dataset_loaded,
-    check_file_exists,
-    check_is_dir,
-    space_replacer,
-)
+from recipe_rec.utilities import check_file_exists, check_is_dir, space_replacer
 
 
 class TfIdfRecommender(RecommenderSystem):
